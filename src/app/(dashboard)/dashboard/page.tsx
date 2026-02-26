@@ -6,6 +6,16 @@ export default async function DashboardPage() {
   const session = await auth()
   const name = session?.user?.name || session?.user?.email?.split('@')[0] || 'Creator'
 
+  const statIconColors: Record<string, string> = {
+    violet: 'w-9 h-9 rounded-lg bg-violet-600/20 border border-violet-600/30 flex items-center justify-center',
+    pink: 'w-9 h-9 rounded-lg bg-pink-600/20 border border-pink-600/30 flex items-center justify-center',
+    blue: 'w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-600/30 flex items-center justify-center',
+  }
+  const statIconTextColors: Record<string, string> = {
+    violet: 'w-4 h-4 text-violet-400',
+    pink: 'w-4 h-4 text-pink-400',
+    blue: 'w-4 h-4 text-blue-400',
+  }
   const stats = [
     { label: 'Content Generated', value: '–', icon: Zap, color: 'violet' },
     { label: 'Saved Items', value: '–', icon: BookMarked, color: 'pink' },
@@ -32,8 +42,8 @@ export default async function DashboardPage() {
           return (
             <div key={stat.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-9 h-9 rounded-lg bg-${stat.color}-600/20 border border-${stat.color}-600/30 flex items-center justify-center`}>
-                  <Icon className={`w-4 h-4 text-${stat.color}-400`} />
+                <div className={statIconColors[stat.color]}>
+                  <Icon className={statIconTextColors[stat.color]} />
                 </div>
               </div>
               <div className="text-2xl font-bold text-white mb-0.5">{stat.value}</div>

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const parsed = generateSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid input', details: parsed.error.issues }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
     }
 
     const prompt = buildMasterPrompt(parsed.data)

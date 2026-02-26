@@ -1,3 +1,7 @@
+// In-memory rate limiting store.
+// Note: This works for single-instance deployments. For multi-instance or
+// serverless production environments, replace with a Redis-backed or
+// database-backed implementation (e.g. Upstash Redis or Vercel KV).
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 
 export function rateLimit(identifier: string, limit: number = 10, windowMs: number = 60000): boolean {

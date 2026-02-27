@@ -22,6 +22,10 @@ RUN npm ci
 COPY . .
 
 # Generate Prisma client and build Next.js
+# DATABASE_URL is needed at build time for page pre-rendering (not actually connected)
+ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
+ENV DATABASE_URL=${DATABASE_URL}
+ENV AUTH_SECRET="build-secret-not-used-at-runtime"
 RUN npx prisma generate && npm run build
 
 # --- Production stage ---

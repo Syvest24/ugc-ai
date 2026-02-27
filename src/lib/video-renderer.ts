@@ -1,6 +1,8 @@
 import path from 'path'
 import fs from 'fs'
 
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+
 // Platform aspect ratios and dimensions
 export const PLATFORM_DIMENSIONS: Record<string, { width: number; height: number }> = {
   tiktok: { width: 1080, height: 1920 },
@@ -55,7 +57,9 @@ export interface VideoRenderOutput {
   aspectRatio?: string
 }
 
-const OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated', 'video')
+const OUTPUT_DIR = IS_SERVERLESS
+  ? path.join('/tmp', 'generated', 'video')
+  : path.join(process.cwd(), 'public', 'generated', 'video')
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
@@ -185,11 +189,12 @@ function sanitizePath(inputPath: string): string {
 export async function extractAudio(videoPath: string): Promise<string> {
   // Validate and sanitize the input path
   const safePath = sanitizePath(videoPath)
-  const absolutePath = path.resolve(process.cwd(), 'public', safePath.slice(1)) // remove leading /
+  const baseDir = IS_SERVERLESS ? '/tmp' : path.join(process.cwd(), 'public')
+  const absolutePath = path.resolve(baseDir, safePath.slice(1)) // remove leading /
 
-  // Verify the resolved path is still within public/generated/
-  const publicDir = path.resolve(process.cwd(), 'public', 'generated')
-  if (!absolutePath.startsWith(publicDir)) {
+  // Verify the resolved path is still within generated/
+  const generatedDir = path.resolve(baseDir, 'generated')
+  if (!absolutePath.startsWith(generatedDir)) {
     throw new Error('Path traversal attempt detected')
   }
 
@@ -198,7 +203,9 @@ export async function extractAudio(videoPath: string): Promise<string> {
   }
 
   const audioId = `audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const audioDir = path.join(process.cwd(), 'public', 'generated', 'audio')
+  const audioDir = IS_SERVERLESS
+    ? path.join('/tmp', 'generated', 'audio')
+    : path.join(process.cwd(), 'public', 'generated', 'audio')
   ensureDir(audioDir)
   const outputPath = path.join(audioDir, `${audioId}.mp3`)
 

@@ -7,12 +7,21 @@
  * - Stability AI (Stable Diffusion)
  *
  * Follows the same pattern as llm.ts — provider selected via env vars.
+ *
+ * On Vercel/serverless: returns external URLs or data URIs (no local FS writes).
+ * Locally: saves to public/generated-images/ for static serving.
  */
 
 import { logger } from '@/lib/logger'
-import fs from 'fs'
-import path from 'path'
 import crypto from 'crypto'
+
+// Re-export client-safe constants so server code can import from here too
+export { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, type ImageStyle } from '@/lib/image-constants'
+import type { ImageStyle } from '@/lib/image-constants'
+
+// ─── Environment detection ──────────────────────────────────────────
+
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -27,21 +36,9 @@ export interface ImageGenOptions {
   seed?: number
 }
 
-export type ImageStyle =
-  | 'photorealistic'
-  | 'digital-art'
-  | 'anime'
-  | 'cinematic'
-  | 'minimalist'
-  | 'watercolor'
-  | 'oil-painting'
-  | '3d-render'
-  | 'neon'
-  | 'vintage'
-
 export interface ImageGenResult {
-  url: string          // Public URL or local path to generated image
-  localPath: string    // Local file path for serving
+  url: string          // Public URL, external URL, or data URI
+  localPath?: string   // Local file path (only in non-serverless environments)
   width: number
   height: number
   provider: ImageProvider
@@ -66,14 +63,22 @@ const STYLE_SUFFIXES: Record<ImageStyle, string> = {
 
 const DEFAULT_NEGATIVE = 'blurry, low quality, distorted, watermark, text, logo, bad anatomy, deformed'
 
-// ─── Output directory ────────────────────────────────────────────────
+// ─── Local file storage (dev only) ───────────────────────────────────
 
-const OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated-images')
+async function saveToLocal(buffer: Buffer, filename: string): Promise<string> {
+  if (IS_SERVERLESS) return '' // Skip on serverless
 
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
+  const fs = await import('fs')
+  const path = await import('path')
+  const OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated-images')
+
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true })
   }
+
+  const localPath = path.join(OUTPUT_DIR, filename)
+  fs.writeFileSync(localPath, buffer)
+  return localPath
 }
 
 // ─── Main entry ──────────────────────────────────────────────────────
@@ -115,19 +120,29 @@ async function generateWithPollinations(opts: ImageGenOptions): Promise<ImageGen
 
   // Pollinations uses GET with URL-encoded prompt
   const encodedPrompt = encodeURIComponent(opts.prompt)
-  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`
+  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`
 
-  const response = await fetch(url)
+  if (IS_SERVERLESS) {
+    // On serverless, return the Pollinations URL directly (no download needed)
+    return {
+      url: externalUrl,
+      width,
+      height,
+      provider: 'pollinations',
+      model: 'flux',
+      seed,
+    }
+  }
+
+  // In dev, download and save locally
+  const response = await fetch(externalUrl)
   if (!response.ok) {
     throw new Error(`Pollinations error: ${response.status} ${response.statusText}`)
   }
 
-  // Save to local file
   const buffer = Buffer.from(await response.arrayBuffer())
-  ensureDir(OUTPUT_DIR)
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-  const localPath = path.join(OUTPUT_DIR, filename)
-  fs.writeFileSync(localPath, buffer)
+  const localPath = await saveToLocal(buffer, filename)
 
   return {
     url: `/generated-images/${filename}`,
@@ -178,12 +193,22 @@ async function generateWithTogether(opts: ImageGenOptions): Promise<ImageGenResu
   const b64 = data.data?.[0]?.b64_json
   if (!b64) throw new Error('No image data returned from Together.ai')
 
-  // Decode and save
+  if (IS_SERVERLESS) {
+    // On serverless, return as data URI (no local FS)
+    return {
+      url: `data:image/png;base64,${b64}`,
+      width,
+      height,
+      provider: 'together',
+      model,
+      seed: data.data?.[0]?.seed,
+    }
+  }
+
+  // In dev, decode and save locally
   const buffer = Buffer.from(b64, 'base64')
-  ensureDir(OUTPUT_DIR)
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-  const localPath = path.join(OUTPUT_DIR, filename)
-  fs.writeFileSync(localPath, buffer)
+  const localPath = await saveToLocal(buffer, filename)
 
   return {
     url: `/generated-images/${filename}`,
@@ -228,10 +253,21 @@ async function generateWithStability(opts: ImageGenOptions): Promise<ImageGenRes
   }
 
   const buffer = Buffer.from(await response.arrayBuffer())
-  ensureDir(OUTPUT_DIR)
+
+  if (IS_SERVERLESS) {
+    // On serverless, return as data URI
+    return {
+      url: `data:image/png;base64,${buffer.toString('base64')}`,
+      width,
+      height,
+      provider: 'stability',
+      model: 'sd3',
+    }
+  }
+
+  // In dev, save locally
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-  const localPath = path.join(OUTPUT_DIR, filename)
-  fs.writeFileSync(localPath, buffer)
+  const localPath = await saveToLocal(buffer, filename)
 
   return {
     url: `/generated-images/${filename}`,
@@ -270,27 +306,4 @@ export function buildImagePrompt(
   return prompt
 }
 
-// ─── Available styles for UI ─────────────────────────────────────────
-
-export const IMAGE_STYLES: { id: ImageStyle; name: string; emoji: string }[] = [
-  { id: 'photorealistic', name: 'Photorealistic', emoji: '📸' },
-  { id: 'cinematic', name: 'Cinematic', emoji: '🎬' },
-  { id: 'digital-art', name: 'Digital Art', emoji: '🎨' },
-  { id: '3d-render', name: '3D Render', emoji: '🧊' },
-  { id: 'minimalist', name: 'Minimalist', emoji: '⬜' },
-  { id: 'neon', name: 'Neon / Cyberpunk', emoji: '💜' },
-  { id: 'anime', name: 'Anime', emoji: '🌸' },
-  { id: 'watercolor', name: 'Watercolor', emoji: '💧' },
-  { id: 'oil-painting', name: 'Oil Painting', emoji: '🖼️' },
-  { id: 'vintage', name: 'Vintage', emoji: '📷' },
-]
-
-// ─── Aspect ratio presets for images ────────────────────────────────
-
-export const IMAGE_ASPECT_RATIOS = [
-  { id: '1:1', label: 'Square', width: 1024, height: 1024, desc: 'Feed posts' },
-  { id: '9:16', label: 'Portrait', width: 768, height: 1344, desc: 'Stories / Reels' },
-  { id: '16:9', label: 'Landscape', width: 1344, height: 768, desc: 'YouTube / Banner' },
-  { id: '4:5', label: 'Portrait (4:5)', width: 896, height: 1120, desc: 'Instagram post' },
-  { id: '3:2', label: 'Classic (3:2)', width: 1200, height: 800, desc: 'Blog / Web' },
-] as const
+// IMAGE_STYLES and IMAGE_ASPECT_RATIOS are re-exported from '@/lib/image-constants'

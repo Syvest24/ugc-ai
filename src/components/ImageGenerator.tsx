@@ -5,7 +5,7 @@ import {
   Sparkles, Download, Heart, Trash2, Loader2, ImageIcon,
   ChevronDown, ChevronUp, Copy, RotateCcw, Layers, BookOpen, Clock, Star,
 } from 'lucide-react'
-import { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, type ImageStyle } from '@/lib/image-gen'
+import { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, type ImageStyle } from '@/lib/image-constants'
 import { usePromptStore, PRESET_TEMPLATES, TEMPLATE_CATEGORIES, type PromptTemplate } from '@/stores/prompt-store'
 
 interface GeneratedImage {

@@ -2,6 +2,8 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import fs from 'fs'
 import path from 'path'
 
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+
 export interface TTSWordBoundary {
   text: string
   startMs: number
@@ -30,7 +32,9 @@ export const VOICES = {
 
 export type VoiceId = keyof typeof VOICES
 
-const OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated', 'audio')
+const OUTPUT_DIR = IS_SERVERLESS
+  ? path.join('/tmp', 'generated', 'audio')
+  : path.join(process.cwd(), 'public', 'generated', 'audio')
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
@@ -97,11 +101,25 @@ export async function generateTTS(
 
     writeStream.on('finish', () => {
       tts.close()
-      resolve({
-        audioPath: `/generated/audio/${id}.mp3`,
-        duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
-        wordBoundaries,
-      })
+
+      if (IS_SERVERLESS) {
+        // On serverless, convert to data URI since /tmp isn't publicly accessible
+        const audioBuffer = fs.readFileSync(audioPath)
+        const dataUri = `data:audio/mpeg;base64,${audioBuffer.toString('base64')}`
+        // Clean up temp file
+        try { fs.unlinkSync(audioPath) } catch { /* ignore */ }
+        resolve({
+          audioPath: dataUri,
+          duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
+          wordBoundaries,
+        })
+      } else {
+        resolve({
+          audioPath: `/generated/audio/${id}.mp3`,
+          duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
+          wordBoundaries,
+        })
+      }
     })
 
     writeStream.on('error', (err) => {

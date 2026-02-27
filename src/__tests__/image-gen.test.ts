@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, buildImagePrompt, type ImageStyle } from '@/lib/image-gen'
+import { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, type ImageStyle } from '@/lib/image-constants'
+import { buildImagePrompt } from '@/lib/image-gen'
 import { IMAGE_TO_VIDEO_MOTIONS } from '@/lib/image-to-video'
 import {
   PRESET_TEMPLATES,

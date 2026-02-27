@@ -13,6 +13,8 @@ import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+
 export interface ImageToVideoOptions {
   /** URL or local path of the source image */
   imageUrl: string
@@ -50,7 +52,9 @@ export const IMAGE_TO_VIDEO_MOTIONS = [
 
 export type MotionType = (typeof IMAGE_TO_VIDEO_MOTIONS)[number]['id']
 
-const OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated-videos', 'from-image')
+const OUTPUT_DIR = IS_SERVERLESS
+  ? path.join('/tmp', 'generated-videos', 'from-image')
+  : path.join(process.cwd(), 'public', 'generated-videos', 'from-image')
 
 async function ensureOutputDir() {
   if (!existsSync(OUTPUT_DIR)) {
@@ -148,7 +152,19 @@ async function generateWithReplicate(
     throw new Error(`Video generation failed: ${result.error}`)
   }
 
-  // Download and save the video
+  if (IS_SERVERLESS) {
+    // On serverless, return Replicate's hosted URL directly
+    return {
+      videoUrl: result.output,
+      provider: 'replicate',
+      model: 'stable-video-diffusion',
+      duration,
+      width,
+      height,
+    }
+  }
+
+  // Download and save the video locally
   const videoResponse = await fetch(result.output)
   const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
   const filename = `vid_${crypto.randomUUID().slice(0, 8)}.mp4`

@@ -1,15 +1,16 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
-import path from 'path'
-
-const dbUrl = 'file:' + path.join(process.cwd(), 'dev.db')
+import { PrismaPg } from '@prisma/adapter-pg'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaBetterSqlite3({ url: dbUrl })
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is required')
+  }
+  const adapter = new PrismaPg({ connectionString })
   return new PrismaClient({ adapter })
 }
 

@@ -1,6 +1,6 @@
-export type Platform = 'tiktok' | 'instagram' | 'youtube_shorts' | 'twitter_x' | 'linkedin'
-export type ContentGoal = 'sales' | 'engagement' | 'follower_growth' | 'authority_building'
-export type Tone = 'casual' | 'bold' | 'emotional' | 'educational' | 'storytelling'
+// Re-export canonical types from constants (single source of truth)
+import type { Platform, ContentGoal, Tone } from '@/lib/constants'
+export type { Platform, ContentGoal, Tone } from '@/lib/constants'
 
 export interface GeneratorFormData {
   productName: string

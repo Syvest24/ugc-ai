@@ -1,29 +1,49 @@
 import { auth } from '@/lib/auth'
+import { ensureUser, getUserStats } from '@/lib/db'
 import Link from 'next/link'
-import { PenSquare, BookMarked, Zap, TrendingUp, ArrowRight, Sparkles } from 'lucide-react'
+import { PenSquare, BookMarked, Zap, TrendingUp, ArrowRight, Sparkles, Video, Film, ImageIcon } from 'lucide-react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Dashboard' }
 
 export default async function DashboardPage() {
   const session = await auth()
   const name = session?.user?.name || session?.user?.email?.split('@')[0] || 'Creator'
 
+  // Fetch real stats from DB
+  let stats = { contentGenerated: 0, videosCreated: 0, savedItems: 0, imagesGenerated: 0, platformsUsed: 0, totalUsage: 0, recentUsage: [] as { count: number }[] }
+  if (session?.user?.email) {
+    try {
+      const user = await ensureUser(session.user.email, session.user.name)
+      stats = await getUserStats(user.id)
+    } catch {
+      // DB might not be migrated yet
+    }
+  }
+
   const statIconColors: Record<string, string> = {
     violet: 'w-9 h-9 rounded-lg bg-violet-600/20 border border-violet-600/30 flex items-center justify-center',
     pink: 'w-9 h-9 rounded-lg bg-pink-600/20 border border-pink-600/30 flex items-center justify-center',
     blue: 'w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-600/30 flex items-center justify-center',
+    emerald: 'w-9 h-9 rounded-lg bg-emerald-600/20 border border-emerald-600/30 flex items-center justify-center',
   }
   const statIconTextColors: Record<string, string> = {
     violet: 'w-4 h-4 text-violet-400',
     pink: 'w-4 h-4 text-pink-400',
     blue: 'w-4 h-4 text-blue-400',
+    emerald: 'w-4 h-4 text-emerald-400',
   }
-  const stats = [
-    { label: 'Content Generated', value: '–', icon: Zap, color: 'violet' },
-    { label: 'Saved Items', value: '–', icon: BookMarked, color: 'pink' },
-    { label: 'Platforms Used', value: '5', icon: TrendingUp, color: 'blue' },
+  const statCards = [
+    { label: 'Content Generated', value: stats.contentGenerated.toString(), icon: Zap, color: 'violet' },
+    { label: 'Videos Created', value: stats.videosCreated.toString(), icon: Film, color: 'pink' },
+    { label: 'AI Images', value: stats.imagesGenerated.toString(), icon: ImageIcon, color: 'emerald' },
+    { label: 'Saved Items', value: stats.savedItems.toString(), icon: BookMarked, color: 'blue' },
   ]
 
   const quickActions = [
     { href: '/generate', label: 'Generate New Content', desc: 'Create hooks, scripts, captions & more', icon: PenSquare, primary: true },
+    { href: '/video', label: 'Create Video', desc: 'Turn scripts into downloadable UGC videos', icon: Video, primary: true },
+    { href: '/images', label: 'AI Images', desc: 'Generate stunning images with AI', icon: ImageIcon, primary: true },
     { href: '/saved', label: 'View Saved Content', desc: 'Browse your saved generations', icon: BookMarked, primary: false },
   ]
 
@@ -36,8 +56,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        {stats.map(stat => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statCards.map(stat => {
           const Icon = stat.icon
           return (
             <div key={stat.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
@@ -54,7 +74,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {quickActions.map(action => {
           const Icon = action.icon
           return (

@@ -1,19 +1,8 @@
 import type { GeneratorFormData, GeneratedOutput } from '@/types'
+import { PLATFORM_LABELS, GOAL_PROMPT_LABELS } from '@/lib/constants'
 
-const platformLabels: Record<string, string> = {
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  youtube_shorts: 'YouTube Shorts',
-  twitter_x: 'Twitter/X',
-  linkedin: 'LinkedIn',
-}
-
-const goalLabels: Record<string, string> = {
-  sales: 'drive sales and conversions',
-  engagement: 'maximize engagement and shares',
-  follower_growth: 'grow followers and reach',
-  authority_building: 'build authority and trust',
-}
+const platformLabels = PLATFORM_LABELS
+const goalLabels = GOAL_PROMPT_LABELS
 
 export const systemPrompt = `You are an elite UGC (User Generated Content) strategist and copywriter.
 You create high-converting, native-feeling content for social media platforms.

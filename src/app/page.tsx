@@ -1,5 +1,11 @@
 import Link from 'next/link'
 import { Zap, ArrowRight, Check, TrendingUp, Sparkles, Target } from 'lucide-react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'UGCForge – AI-Powered UGC Content Generator',
+  description: 'Generate high-converting UGC scripts, hooks, captions and more for TikTok, Instagram, YouTube Shorts and LinkedIn.',
+}
 
 const features = [
   { icon: Zap, title: '10 Hook Variations', desc: 'AI-generated hooks using proven psychological triggers' },
@@ -159,7 +165,7 @@ export default function LandingPage() {
             </div>
             <span>UGCForge</span>
           </div>
-          <p>© 2024 UGCForge. AI-powered content for the creator economy.</p>
+          <p>© {new Date().getFullYear()} UGCForge. AI-powered content for the creator economy.</p>
         </div>
       </footer>
     </div>

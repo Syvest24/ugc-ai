@@ -23,9 +23,12 @@ export default function OutputSection({ title, content, defaultOpen = false }: O
 
   return (
     <div className="border border-gray-800 rounded-xl overflow-hidden">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-900/60 hover:bg-gray-800/60 transition-colors"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(!isOpen) } }}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-900/60 hover:bg-gray-800/60 transition-colors cursor-pointer"
       >
         <span className="font-semibold text-sm text-gray-200">{title}</span>
         <div className="flex items-center gap-2">
@@ -43,7 +46,7 @@ export default function OutputSection({ title, content, defaultOpen = false }: O
           )}
           {isOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
-      </button>
+      </div>
       {isOpen && (
         <div className="px-4 py-3 bg-gray-950/50 border-t border-gray-800">
           {Array.isArray(content) ? (

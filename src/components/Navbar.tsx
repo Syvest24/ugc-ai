@@ -2,28 +2,57 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut } from 'lucide-react'
+import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useState, useEffect } from 'react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/generate', label: 'Generate', icon: PenSquare },
+  { href: '/video', label: 'Create Video', icon: Video },
+  { href: '/images', label: 'AI Images', icon: ImageIcon },
+  { href: '/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/saved', label: 'Saved', icon: BookMarked },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Navbar() {
   const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  return (
-    <nav className="fixed left-0 top-0 h-full w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50">
-      <div className="p-6 border-b border-gray-800">
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
+  const sidebarContent = (
+    <>
+      <div className="p-6 border-b border-gray-800 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-lg text-white">UGCForge</span>
         </Link>
+        {/* Close button — mobile only */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden p-1 rounded-lg hover:bg-gray-800 text-gray-400"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="flex-1 p-4 space-y-1">
@@ -57,6 +86,48 @@ export default function Navbar() {
           Sign Out
         </button>
       </div>
-    </nav>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="fixed top-0 left-0 right-0 h-14 bg-gray-950 border-b border-gray-800 flex items-center px-4 z-40 lg:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-lg hover:bg-gray-800 text-gray-400"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <Link href="/dashboard" className="flex items-center gap-2 ml-3">
+          <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center">
+            <Zap className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="font-bold text-white">UGCForge</span>
+        </Link>
+      </div>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — desktop: fixed, mobile: slide-in drawer */}
+      <nav
+        className={cn(
+          'fixed top-0 h-full w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50 transition-transform duration-300 ease-in-out',
+          // Desktop: always visible
+          'lg:translate-x-0',
+          // Mobile: slide in/out
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
+        {sidebarContent}
+      </nav>
+    </>
   )
 }

@@ -1,12 +1,19 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { Wand2, Save, Download, RefreshCw } from 'lucide-react'
+import { Wand2, Save, Download, RefreshCw, Video, Zap, Loader2, GitBranch } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import type { GeneratedOutput } from '@/types'
-import OutputSection from '@/components/OutputSection'
+import { useBrandKitStore } from '@/stores/brand-kit'
+
+const OutputSection = dynamic(() => import('@/components/OutputSection'))
+const VariationsPanel = dynamic(() => import('@/components/VariationsPanel'))
+const CaptionGenerator = dynamic(() => import('@/components/CaptionGenerator'))
 
 const formSchema = z.object({
   productName: z.string().min(1, 'Required').max(100),
@@ -31,10 +38,18 @@ const textareaClass = `${inputClass} resize-vertical min-h-[80px]`
 
 export default function GeneratePage() {
   const [output, setOutput] = useState<GeneratedOutput | null>(null)
+  const [contentId, setContentId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [streamingText, setStreamingText] = useState('')
+  const [quickVideoLoading, setQuickVideoLoading] = useState(false)
+  const [variationsLoading, setVariationsLoading] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [variations, setVariations] = useState<any[] | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const router = useRouter()
+  const { brandKit, fetchBrandKit } = useBrandKitStore()
 
-  const { register, handleSubmit, getValues, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, getValues, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       platform: 'tiktok',
@@ -43,24 +58,98 @@ export default function GeneratePage() {
     },
   })
 
+  // Load brand kit defaults
+  useEffect(() => {
+    fetchBrandKit()
+  }, [fetchBrandKit])
+
+  useEffect(() => {
+    if (brandKit) {
+      if (brandKit.defaultPlatform) setValue('platform', brandKit.defaultPlatform as FormData['platform'])
+      if (brandKit.defaultTone) setValue('tone', brandKit.defaultTone as FormData['tone'])
+    }
+  }, [brandKit, setValue])
+
   const onSubmit = async (data: FormData) => {
     setLoading(true)
+    setOutput(null)
+    setContentId(null)
+    setStreamingText('')
+    setVariations(null)
+
     try {
-      const res = await fetch('/api/generate', {
+      const res = await fetch('/api/generate/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      const json = await res.json()
+
       if (!res.ok) {
-        toast.error(json.error || 'Generation failed')
+        const text = await res.text()
+        try {
+          const json = JSON.parse(text.replace(/^data: /, ''))
+          toast.error(json.message || 'Generation failed')
+        } catch {
+          toast.error('Generation failed')
+        }
         return
       }
-      setOutput(json.output)
-      toast.success('Content generated successfully!')
-      const outputEl = document.getElementById('output')
-      if (outputEl) {
-        window.scrollTo({ top: outputEl.offsetTop, behavior: 'smooth' })
+
+      const reader = res.body?.getReader()
+      if (!reader) {
+        toast.error('Streaming not supported')
+        return
+      }
+
+      // Scroll to the streaming preview
+      setTimeout(() => {
+        const el = document.getElementById('streaming-preview')
+        if (el) window.scrollTo({ top: el.offsetTop - 80, behavior: 'smooth' })
+      }, 100)
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        let currentEvent = ''
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (trimmed.startsWith('event: ')) {
+            currentEvent = trimmed.slice(7)
+          } else if (trimmed.startsWith('data: ')) {
+            const payload = trimmed.slice(6)
+            try {
+              const parsed = JSON.parse(payload)
+
+              if (currentEvent === 'text') {
+                accumulated += parsed
+                setStreamingText(accumulated)
+              } else if (currentEvent === 'done') {
+                setOutput(parsed.output)
+                setContentId(parsed.contentId || null)
+                setStreamingText('')
+                toast.success('Content generated successfully!')
+                setTimeout(() => {
+                  const outputEl = document.getElementById('output')
+                  if (outputEl) window.scrollTo({ top: outputEl.offsetTop - 80, behavior: 'smooth' })
+                }, 100)
+              } else if (currentEvent === 'error') {
+                toast.error(typeof parsed === 'string' ? parsed : 'Generation failed')
+              }
+            } catch {
+              // skip malformed data
+            }
+            currentEvent = ''
+          }
+        }
       }
     } catch {
       toast.error('Network error. Please try again.')
@@ -80,6 +169,7 @@ export default function GeneratePage() {
       })
       if (res.ok) {
         toast.success('Content saved!')
+        router.refresh()
       } else {
         toast.error('Failed to save content')
       }
@@ -139,6 +229,67 @@ ${output.abVariants.join('\n\n')}
     a.download = `ugcforge-${data.productName.replace(/\s+/g, '-').toLowerCase()}.txt`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleQuickVideo = async () => {
+    if (!contentId) return
+    setQuickVideoLoading(true)
+    toast.loading('Creating video automatically... This may take 1-2 minutes', { id: 'quick-video' })
+
+    try {
+      const res = await fetch('/api/video/auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Quick video failed', { id: 'quick-video' })
+        return
+      }
+      toast.success('Video created! Redirecting...', { id: 'quick-video' })
+      // Navigate to the video page with the result
+      router.push(`/video?videoUrl=${encodeURIComponent(data.data.videoPath)}&videoId=${data.data.videoId}`)
+    } catch {
+      toast.error('Quick video creation failed', { id: 'quick-video' })
+    } finally {
+      setQuickVideoLoading(false)
+    }
+  }
+
+  const handleGenerateVariations = async () => {
+    const data = getValues()
+    if (!data.productName || !data.productDescription || !data.targetAudience || !data.ctaType) {
+      toast.error('Fill in all required fields first')
+      return
+    }
+
+    setVariationsLoading(true)
+    setVariations(null)
+    toast.loading('Generating 3 content variations... This may take a minute', { id: 'variations' })
+
+    try {
+      const res = await fetch('/api/generate/variations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...data,
+          parentContentId: contentId || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json.error || 'Variations failed', { id: 'variations' })
+        return
+      }
+      setVariations(json.data.variations)
+      const successCount = json.data.variations.filter((v: { success: boolean }) => v.success).length
+      toast.success(`Generated ${successCount} variations!`, { id: 'variations' })
+    } catch {
+      toast.error('Variation generation failed', { id: 'variations' })
+    } finally {
+      setVariationsLoading(false)
+    }
   }
 
   const label = (text: string, required?: boolean) => (
@@ -281,6 +432,39 @@ ${output.abVariants.join('\n\n')}
         </button>
       </form>
 
+      {/* Streaming Live Preview */}
+      {loading && streamingText && (
+        <div id="streaming-preview" className="mt-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-violet-500" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Generating Content...</h2>
+            <span className="text-xs text-gray-500 font-mono">{streamingText.length} chars</span>
+          </div>
+          <div className="bg-gray-950/70 border border-gray-800 rounded-xl p-5 max-h-[500px] overflow-y-auto">
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">
+              {streamingText}
+              <span className="inline-block w-2 h-4 bg-violet-400 animate-pulse ml-0.5 align-text-bottom" />
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Loading placeholder when streaming hasn't started yet */}
+      {loading && !streamingText && (
+        <div id="streaming-preview" className="mt-10">
+          <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-8 text-center">
+            <svg className="animate-spin h-8 w-8 text-violet-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <p className="text-gray-400 text-sm">Connecting to AI model...</p>
+          </div>
+        </div>
+      )}
+
       {/* Output */}
       {output && (
         <div id="output" className="mt-10">
@@ -301,12 +485,45 @@ ${output.abVariants.join('\n\n')}
                 <Download className="w-4 h-4" />
                 Download
               </button>
+              <Link
+                href={contentId ? `/video?contentId=${contentId}` : '/video'}
+                className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Video className="w-4 h-4" />
+                Create Video
+              </Link>
+              {contentId && (
+                <button
+                  onClick={handleQuickVideo}
+                  disabled={quickVideoLoading}
+                  className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {quickVideoLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  {quickVideoLoading ? 'Creating...' : 'Quick Video'}
+                </button>
+              )}
               <button
                 onClick={() => handleSubmit(onSubmit)()}
                 className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
                 Regenerate
+              </button>
+              <button
+                onClick={handleGenerateVariations}
+                disabled={variationsLoading}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {variationsLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <GitBranch className="w-4 h-4" />
+                )}
+                {variationsLoading ? 'Generating...' : 'Variations'}
               </button>
             </div>
           </div>
@@ -325,6 +542,40 @@ ${output.abVariants.join('\n\n')}
             <OutputSection title="🔄 Repurposed for Another Platform" content={output.repurposedContent} />
             <OutputSection title="🧪 A/B Test Variants" content={output.abVariants} />
           </div>
+
+          {/* Caption & Hashtag Generator */}
+          <div className="mt-6">
+            <CaptionGenerator
+              defaultText={output.script}
+              defaultPlatform={watch('platform')}
+              defaultProductName={watch('productName')}
+              compact
+            />
+          </div>
+
+          {/* Content Variations Section */}
+          {variationsLoading && (
+            <div className="mt-8 bg-gray-900/60 border border-gray-800 rounded-xl p-8 text-center">
+              <Loader2 className="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-white mb-1">Generating Variations</h3>
+              <p className="text-sm text-gray-400">
+                Creating 3 different content strategies in parallel...
+              </p>
+              <div className="flex justify-center gap-4 mt-4">
+                {['Curiosity-Driven', 'Emotion-First', 'Authority & Proof'].map(s => (
+                  <span key={s} className="text-xs bg-gray-800 text-gray-400 px-3 py-1.5 rounded-lg border border-gray-700">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {variations && !variationsLoading && (
+            <div className="mt-8">
+              <VariationsPanel variations={variations} />
+            </div>
+          )}
         </div>
       )}
     </div>

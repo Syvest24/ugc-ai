@@ -1,13 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { Zap, UserPlus, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -25,13 +23,14 @@ export default function LoginPage() {
       })
       if (result?.error) {
         toast.error('Invalid email or password.')
+        setLoading(false)
       } else {
         toast.success('Welcome to UGCForge!')
-        router.push('/dashboard')
+        // Full page navigation ensures fresh auth state (avoids RSC cache issues)
+        window.location.href = '/dashboard'
       }
     } catch {
       toast.error('Sign in failed. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
@@ -49,6 +48,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         toast.error(data.error || 'Registration failed')
+        setLoading(false)
         return
       }
 
@@ -63,12 +63,13 @@ export default function LoginPage() {
       if (result?.error) {
         toast.error('Account created but sign in failed. Please try logging in.')
         setMode('login')
+        setLoading(false)
       } else {
-        router.push('/dashboard')
+        // Full page navigation for clean auth state
+        window.location.href = '/dashboard'
       }
     } catch {
       toast.error('Registration failed. Please try again.')
-    } finally {
       setLoading(false)
     }
   }

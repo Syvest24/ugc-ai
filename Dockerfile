@@ -40,7 +40,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+# Let Railway set PORT via env var (defaults to 8080)
+# Next.js reads PORT automatically
 
 # Copy built app and dependencies
 COPY --from=builder /app/.next ./.next
@@ -53,6 +54,6 @@ COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/src ./src
 
-EXPOSE 3000
+EXPOSE 8080
 
 CMD ["npm", "start"]

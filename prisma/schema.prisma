@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String?
+  createdAt    DateTime @default(now())
+
+  generatedContent GeneratedContent[]
+  videos           Video[]
+  usageRecords     UsageRecord[]
+  brandKit         BrandKit?
+  calendarEvents   CalendarEvent[]
+  generatedImages  GeneratedImage[]
+}
+
+model GeneratedImage {
+  id              String   @id @default(cuid())
+  userId          String
+  prompt          String
+  negativePrompt  String?
+  provider        String   // pollinations, together, stability
+  model           String   // flux, sd3, etc.
+  imageUrl        String   // local path e.g. /generated-images/img-xxx.png
+  width           Int      @default(1024)
+  height          Int      @default(1024)
+  style           String?  // photorealistic, cinematic, etc.
+  seed            Int?
+  isFavorite      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model GeneratedContent {
+  id                 String   @id @default(cuid())
+  userId             String
+  productName        String
+  productDescription String
+  targetAudience     String
+  platform           String
+  contentGoal        String
+  tone               String
+  ctaType            String
+  hookBank           String   // JSON array
+  script             String
+  altAngles          String   // JSON object
+  caption            String
+  hashtags           String   // JSON array
+  ctaVariations      String   // JSON array
+  thumbnailTexts     String   // JSON array
+  engagementBaits    String   // JSON array
+  repurposedContent  String
+  abVariants         String   // JSON array
+  rawOutput          String?  // Raw LLM response
+  isFavorite         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videos         Video[]
+  calendarEvents CalendarEvent[]
+
+  @@index([userId])
+  @@index([platform])
+  @@index([contentGoal])
+  @@index([createdAt])
+}
+
+model Video {
+  id               String   @id @default(cuid())
+  userId           String
+  contentId        String?
+  template         String
+  platform         String
+  hook             String
+  scriptLines      String   // JSON array
+  cta              String
+  voiceId          String?
+  audioUrl         String?
+  audioDuration    Int?     // ms
+  wordBoundaries   String?  // JSON array
+  backgroundImage  String?
+  captionStyle     String?
+  hookStyle        String?
+  colorAccent      String?
+  videoPath        String?
+  thumbnailPath    String?
+  width            Int?
+  height           Int?
+  durationMs       Int?
+  status           String   @default("draft") // draft, rendering, completed, failed
+  createdAt        DateTime @default(now())
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content GeneratedContent? @relation(fields: [contentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([contentId])
+}
+
+model BrandKit {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  brandName      String?
+  primaryColor   String  @default("#A855F7")
+  secondaryColor String  @default("#EC4899")
+  accentColor    String  @default("#3B82F6")
+  logoUrl        String?
+  defaultVoice   String  @default("jenny")
+  defaultTone    String  @default("casual")
+  defaultPlatform String @default("tiktok")
+  tagline        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UsageRecord {
+  id     String @id @default(cuid())
+  userId String
+  date   String
+  count  Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String?
+  title     String
+  platform  String
+  date      String   // YYYY-MM-DD format
+  time      String?  // HH:mm format
+  status    String   @default("scheduled") // scheduled, posted, missed
+  notes     String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content GeneratedContent? @relation(fields: [contentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([contentId])
+  @@index([date])
+}

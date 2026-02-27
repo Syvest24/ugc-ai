@@ -24,7 +24,20 @@ export async function middleware(req: NextRequest) {
   }
 
   // Check JWT token (edge-compatible, no Node.js deps)
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET })
+  // Behind reverse proxies (Railway, Vercel), the app receives HTTP requests
+  // internally but cookies are set with __Secure- prefix (HTTPS). We must
+  // explicitly tell getToken the request is secure so it looks for the right
+  // cookie name (__Secure-authjs.session-token).
+  const isSecure =
+    req.headers.get('x-forwarded-proto') === 'https' ||
+    req.nextUrl.protocol === 'https:' ||
+    process.env.NODE_ENV === 'production'
+
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+    secureCookie: isSecure,
+  })
   const isLoggedIn = !!token
 
   // Redirect unauthenticated users to login

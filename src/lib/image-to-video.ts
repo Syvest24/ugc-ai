@@ -94,7 +94,7 @@ export async function imageToVideo(options: ImageToVideoOptions): Promise<ImageT
 }
 
 function selectProvider(): 'replicate' | 'pollinations' | 'local' {
-  if (process.env.REPLICATE_API_KEY) return 'replicate'
+  if (process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY) return 'replicate'
   // Default to local Ken Burns for instant results without API keys
   return 'local'
 }
@@ -109,8 +109,8 @@ async function generateWithReplicate(
   width: number,
   height: number,
 ): Promise<ImageToVideoResult> {
-  const apiKey = process.env.REPLICATE_API_KEY
-  if (!apiKey) throw new Error('REPLICATE_API_KEY not configured')
+  const apiKey = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
+  if (!apiKey) throw new Error('REPLICATE_API_TOKEN not configured')
 
   // Use Stable Video Diffusion model
   const response = await fetch('https://api.replicate.com/v1/predictions', {

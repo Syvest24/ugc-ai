@@ -79,7 +79,7 @@ export async function GET() {
     data: {
       motions: IMAGE_TO_VIDEO_MOTIONS,
       providers: [
-        { id: 'replicate', name: 'Replicate (SVD)', available: !!process.env.REPLICATE_API_KEY },
+        { id: 'replicate', name: 'Replicate (SVD)', available: !!(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY) },
         { id: 'pollinations', name: 'Pollinations.ai', available: true },
         { id: 'local', name: 'Local (ffmpeg)', available: true },
       ],

@@ -18,6 +18,9 @@ COPY prisma.config.ts ./
 # Install all dependencies (including dev for build)
 RUN npm ci
 
+# Ensure Remotion's headless browser is downloaded
+RUN npx remotion browser ensure
+
 # Copy the rest of the source
 COPY . .
 
@@ -35,6 +38,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     openssl \
     ca-certificates \
+    # Chromium dependencies for Remotion headless rendering
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
+    libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

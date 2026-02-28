@@ -35,7 +35,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://images.pexels.com https://*.pexels.com https://image.pollinations.ai",
+      "img-src 'self' data: blob: https://images.pexels.com https://*.pexels.com https://image.pollinations.ai https://replicate.delivery https://*.replicate.delivery",
       "media-src 'self' blob: data:",
       "font-src 'self' data:",
       "connect-src 'self' https://openrouter.ai https://api.groq.com https://api.together.xyz https://api-inference.huggingface.co https://api.mistral.ai https://api.pexels.com",

@@ -3,12 +3,13 @@
  *
  * Supports multiple providers:
  * - Pollinations.ai (free, unlimited, default)
+ * - Replicate (FLUX-schnell, auto-fallback)
  * - Together.ai (Flux models, $5 free credit)
  * - Stability AI (Stable Diffusion)
  *
  * Follows the same pattern as llm.ts — provider selected via env vars.
  *
- * On Vercel/serverless: returns external URLs or data URIs (no local FS writes).
+ * On Vercel/serverless: returns data URIs (no local FS writes).
  * Locally: saves to public/generated-images/ for static serving.
  */
 
@@ -25,7 +26,7 @@ const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_
 
 // ─── Types ────────────────────────────────────────────────────────────
 
-export type ImageProvider = 'pollinations' | 'together' | 'stability'
+export type ImageProvider = 'pollinations' | 'replicate' | 'together' | 'stability'
 
 export interface ImageGenOptions {
   prompt: string
@@ -99,15 +100,25 @@ export async function generateImage(options: ImageGenOptions): Promise<ImageGenR
 
   logger.info('Generating image', { provider, style: options.style, width: opts.width, height: opts.height })
 
-  switch (provider) {
-    case 'pollinations':
-      return generateWithPollinations(opts)
-    case 'together':
-      return generateWithTogether(opts)
-    case 'stability':
-      return generateWithStability(opts)
-    default:
-      return generateWithPollinations(opts)
+  const generate = (p: ImageProvider) => {
+    switch (p) {
+      case 'pollinations': return generateWithPollinations(opts)
+      case 'replicate': return generateWithReplicate(opts)
+      case 'together': return generateWithTogether(opts)
+      case 'stability': return generateWithStability(opts)
+      default: return generateWithPollinations(opts)
+    }
+  }
+
+  try {
+    return await generate(provider)
+  } catch (err) {
+    // Auto-fallback: if primary fails, try Replicate (if token available)
+    if (provider !== 'replicate' && process.env.REPLICATE_API_TOKEN) {
+      logger.warn(`Image gen failed with ${provider}, falling back to Replicate`, { error: String(err) })
+      return generateWithReplicate(opts)
+    }
+    throw err
   }
 }
 
@@ -122,25 +133,139 @@ async function generateWithPollinations(opts: ImageGenOptions): Promise<ImageGen
   const encodedPrompt = encodeURIComponent(opts.prompt)
   const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`
 
-  if (IS_SERVERLESS) {
-    // On serverless, return the Pollinations URL directly (no download needed)
+  // Always fetch the image server-side to validate it works
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 60_000) // 60s timeout
+
+  try {
+    const response = await fetch(externalUrl, { signal: controller.signal })
+    if (!response.ok) {
+      throw new Error(`Pollinations error: ${response.status} ${response.statusText}`)
+    }
+
+    const ct = response.headers.get('content-type') || ''
+    if (!ct.startsWith('image/')) {
+      throw new Error(`Pollinations returned non-image content: ${ct}`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (buffer.length < 1000) {
+      throw new Error('Pollinations returned suspiciously small image')
+    }
+
+    if (IS_SERVERLESS) {
+      // On serverless, return as data URI (no local FS)
+      const mimeType = ct.split(';')[0] || 'image/png'
+      return {
+        url: `data:${mimeType};base64,${buffer.toString('base64')}`,
+        width,
+        height,
+        provider: 'pollinations',
+        model: 'flux',
+        seed,
+      }
+    }
+
+    // In dev, save locally
+    const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
+    const localPath = await saveToLocal(buffer, filename)
+
     return {
-      url: externalUrl,
+      url: `/generated-images/${filename}`,
+      localPath,
       width,
       height,
       provider: 'pollinations',
       model: 'flux',
       seed,
     }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+// ─── Replicate (FLUX-schnell, fast & reliable) ──────────────────────
+
+async function generateWithReplicate(opts: ImageGenOptions): Promise<ImageGenResult> {
+  const token = process.env.REPLICATE_API_TOKEN
+  if (!token) throw new Error('REPLICATE_API_TOKEN is not set')
+
+  const width = opts.width || 1024
+  const height = opts.height || 1024
+  const aspectRatio = getAspectRatioString(width, height)
+
+  logger.info('Generating image with Replicate FLUX-schnell', { aspectRatio })
+
+  // Create prediction
+  const createRes = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'wait',  // Sync mode — waits for result
+    },
+    body: JSON.stringify({
+      input: {
+        prompt: opts.prompt,
+        num_outputs: 1,
+        aspect_ratio: aspectRatio,
+        output_format: 'png',
+        output_quality: 90,
+        go_fast: true,
+        seed: opts.seed,
+      },
+    }),
+  })
+
+  if (!createRes.ok) {
+    const err = await createRes.text()
+    throw new Error(`Replicate error: ${createRes.status} ${err}`)
+  }
+
+  const prediction = await createRes.json()
+
+  // If not completed yet (Prefer: wait should handle this, but just in case)
+  let result = prediction
+  if (result.status !== 'succeeded') {
+    // Poll until done
+    const getUrl = result.urls?.get
+    if (!getUrl) throw new Error('No prediction URL returned')
+
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 2000))
+      const pollRes = await fetch(getUrl, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      result = await pollRes.json()
+      if (result.status === 'succeeded') break
+      if (result.status === 'failed' || result.status === 'canceled') {
+        throw new Error(`Replicate prediction ${result.status}: ${result.error || 'unknown'}`)
+      }
+    }
+
+    if (result.status !== 'succeeded') {
+      throw new Error('Replicate prediction timed out')
+    }
+  }
+
+  const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output
+  if (!imageUrl) throw new Error('No image URL in Replicate response')
+
+  if (IS_SERVERLESS) {
+    // Return Replicate's hosted URL directly (it's a CDN URL, not ephemeral)
+    return {
+      url: imageUrl,
+      width,
+      height,
+      provider: 'replicate',
+      model: 'flux-schnell',
+      seed: opts.seed,
+    }
   }
 
   // In dev, download and save locally
-  const response = await fetch(externalUrl)
-  if (!response.ok) {
-    throw new Error(`Pollinations error: ${response.status} ${response.statusText}`)
-  }
-
-  const buffer = Buffer.from(await response.arrayBuffer())
+  const imgRes = await fetch(imageUrl)
+  const buffer = Buffer.from(await imgRes.arrayBuffer())
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
   const localPath = await saveToLocal(buffer, filename)
 
@@ -149,10 +274,21 @@ async function generateWithPollinations(opts: ImageGenOptions): Promise<ImageGen
     localPath,
     width,
     height,
-    provider: 'pollinations',
-    model: 'flux',
-    seed,
+    provider: 'replicate',
+    model: 'flux-schnell',
+    seed: opts.seed,
   }
+}
+
+function getAspectRatioString(w: number, h: number): string {
+  const ratio = w / h
+  if (ratio > 1.9) return '21:9'
+  if (ratio > 1.4) return '16:9'
+  if (ratio > 1.1) return '4:3'
+  if (ratio < 0.55) return '9:21'
+  if (ratio < 0.7) return '9:16'
+  if (ratio < 0.9) return '3:4'
+  return '1:1'
 }
 
 // ─── Together.ai (Flux/SDXL, pay-per-use) ───────────────────────────

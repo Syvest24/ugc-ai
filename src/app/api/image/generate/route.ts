@@ -14,6 +14,7 @@ const imageSchema = z.object({
     'photorealistic', 'digital-art', 'anime', 'cinematic', 'minimalist',
     'watercolor', 'oil-painting', '3d-render', 'neon', 'vintage',
   ] as const).optional(),
+  provider: z.enum(['pollinations', 'gemini', 'replicate', 'together', 'stability'] as const).optional(),
   width: z.number().int().min(256).max(2048).optional(),
   height: z.number().int().min(256).max(2048).optional(),
   seed: z.number().int().optional(),
@@ -40,12 +41,13 @@ export async function POST(req: NextRequest) {
       return badRequest('Invalid input', parsed.error.flatten().fieldErrors)
     }
 
-    const { prompt, negativePrompt, style, width, height, seed } = parsed.data
+    const { prompt, negativePrompt, style, provider, width, height, seed } = parsed.data
 
     const result = await generateImage({
       prompt,
       negativePrompt,
       style: style as ImageStyle | undefined,
+      provider: provider as import('@/lib/image-gen').ImageProvider | undefined,
       width,
       height,
       seed,

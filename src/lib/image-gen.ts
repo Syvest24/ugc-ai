@@ -15,9 +15,10 @@
 
 import { logger } from '@/lib/logger'
 import crypto from 'crypto'
+import { GoogleGenAI, Modality } from '@google/genai'
 
 // Re-export client-safe constants so server code can import from here too
-export { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, type ImageStyle } from '@/lib/image-constants'
+export { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, IMAGE_PROVIDERS, type ImageStyle } from '@/lib/image-constants'
 import type { ImageStyle } from '@/lib/image-constants'
 
 // ─── Environment detection ──────────────────────────────────────────
@@ -26,7 +27,7 @@ const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_
 
 // ─── Types ────────────────────────────────────────────────────────────
 
-export type ImageProvider = 'pollinations' | 'replicate' | 'together' | 'stability'
+export type ImageProvider = 'pollinations' | 'replicate' | 'together' | 'stability' | 'gemini'
 
 export interface ImageGenOptions {
   prompt: string
@@ -35,6 +36,7 @@ export interface ImageGenOptions {
   height?: number
   style?: ImageStyle
   seed?: number
+  provider?: ImageProvider  // per-request provider override
 }
 
 export interface ImageGenResult {
@@ -85,7 +87,7 @@ async function saveToLocal(buffer: Buffer, filename: string): Promise<string> {
 // ─── Main entry ──────────────────────────────────────────────────────
 
 export async function generateImage(options: ImageGenOptions): Promise<ImageGenResult> {
-  const provider = (process.env.IMAGE_PROVIDER || 'replicate') as ImageProvider
+  const provider = (options.provider || process.env.IMAGE_PROVIDER || 'pollinations') as ImageProvider
   const enhancedPrompt = options.style
     ? options.prompt + (STYLE_SUFFIXES[options.style] || '')
     : options.prompt
@@ -106,6 +108,7 @@ export async function generateImage(options: ImageGenOptions): Promise<ImageGenR
       case 'replicate': return generateWithReplicate(opts)
       case 'together': return generateWithTogether(opts)
       case 'stability': return generateWithStability(opts)
+      case 'gemini': return generateWithGemini(opts)
       default: return generateWithPollinations(opts)
     }
   }
@@ -422,6 +425,72 @@ function getStabilityAspectRatio(w: number, h: number): string {
   if (ratio < 0.7) return '9:16'
   if (ratio < 0.9) return '3:4'
   return '1:1'
+}
+
+// ─── Google Gemini / Imagen (free tier available) ────────────────────
+
+async function generateWithGemini(opts: ImageGenOptions): Promise<ImageGenResult> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
+
+  const width = opts.width || 1024
+  const height = opts.height || 1024
+
+  const ai = new GoogleGenAI({ apiKey })
+
+  logger.info('Generating image with Google Gemini Imagen', { width, height })
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash-exp',
+    contents: opts.prompt,
+    config: {
+      responseModalities: [Modality.TEXT, Modality.IMAGE],
+    },
+  })
+
+  // Extract image from response parts
+  const parts = response.candidates?.[0]?.content?.parts
+  if (!parts) throw new Error('No response from Gemini')
+
+  let imageData: string | null = null
+  let mimeType = 'image/png'
+
+  for (const part of parts) {
+    if (part.inlineData) {
+      imageData = part.inlineData.data ?? null
+      mimeType = part.inlineData.mimeType || 'image/png'
+      break
+    }
+  }
+
+  if (!imageData) {
+    throw new Error('Gemini did not return an image. Try a more descriptive prompt.')
+  }
+
+  if (IS_SERVERLESS) {
+    return {
+      url: `data:${mimeType};base64,${imageData}`,
+      width,
+      height,
+      provider: 'gemini',
+      model: 'gemini-2.0-flash-exp',
+    }
+  }
+
+  // In dev, decode and save locally
+  const buffer = Buffer.from(imageData, 'base64')
+  const ext = mimeType.includes('png') ? 'png' : 'jpg'
+  const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`
+  const localPath = await saveToLocal(buffer, filename)
+
+  return {
+    url: `/generated-images/${filename}`,
+    localPath,
+    width,
+    height,
+    provider: 'gemini',
+    model: 'gemini-2.0-flash-exp',
+  }
 }
 
 // ─── Prompt builder helper ───────────────────────────────────────────

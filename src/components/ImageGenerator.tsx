@@ -5,7 +5,7 @@ import {
   Sparkles, Download, Heart, Trash2, Loader2, ImageIcon,
   ChevronDown, ChevronUp, Copy, RotateCcw, Layers, BookOpen, Clock, Star,
 } from 'lucide-react'
-import { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, type ImageStyle } from '@/lib/image-constants'
+import { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, IMAGE_PROVIDERS, type ImageStyle } from '@/lib/image-constants'
 import { usePromptStore, PRESET_TEMPLATES, TEMPLATE_CATEGORIES, type PromptTemplate } from '@/stores/prompt-store'
 
 interface GeneratedImage {
@@ -33,6 +33,7 @@ export default function ImageGenerator({ onImageGenerated }: ImageGeneratorProps
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
   const [style, setStyle] = useState<ImageStyle | ''>('')
+  const [provider, setProvider] = useState<string>('')
   const [aspectRatio, setAspectRatio] = useState<string>('1:1')
   const [seed, setSeed] = useState<string>('')
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -67,6 +68,7 @@ export default function ImageGenerator({ onImageGenerated }: ImageGeneratorProps
           prompt: prompt.trim(),
           negativePrompt: negativePrompt.trim() || undefined,
           style: style || undefined,
+          provider: provider || undefined,
           width: selectedSize.width,
           height: selectedSize.height,
           seed: seed ? parseInt(seed) : undefined,
@@ -334,6 +336,41 @@ export default function ImageGenerator({ onImageGenerated }: ImageGeneratorProps
             )}
           </div>
         )}
+      </div>
+
+      {/* AI Provider Selection */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">AI Provider</label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <button
+            type="button"
+            onClick={() => setProvider('')}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+              provider === ''
+                ? 'border-violet-500 bg-violet-600/20 text-violet-300'
+                : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            Default
+          </button>
+          {IMAGE_PROVIDERS.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setProvider(p.id)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                provider === p.id
+                  ? 'border-violet-500 bg-violet-600/20 text-violet-300'
+                  : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+              }`}
+            >
+              <span className="block">{p.emoji} {p.name}</span>
+              <span className={`block text-[10px] mt-0.5 ${p.free ? 'text-green-400/70' : 'opacity-50'}`}>
+                {p.free ? '✓ Free' : p.description}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Style Selection */}

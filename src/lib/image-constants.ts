@@ -29,6 +29,16 @@ export const IMAGE_STYLES: { id: ImageStyle; name: string; emoji: string }[] = [
   { id: 'vintage', name: 'Vintage', emoji: '📷' },
 ]
 
+export type ImageProviderOption = 'pollinations' | 'gemini' | 'replicate' | 'together' | 'stability'
+
+export const IMAGE_PROVIDERS: { id: ImageProviderOption; name: string; emoji: string; free: boolean; description: string }[] = [
+  { id: 'pollinations', name: 'Pollinations', emoji: '🌸', free: true, description: 'Free, no API key' },
+  { id: 'gemini', name: 'Google Gemini', emoji: '✨', free: true, description: 'Free tier (Imagen)' },
+  { id: 'replicate', name: 'Replicate', emoji: '🔄', free: false, description: 'FLUX-schnell' },
+  { id: 'together', name: 'Together.ai', emoji: '🤝', free: false, description: 'FLUX/SDXL' },
+  { id: 'stability', name: 'Stability AI', emoji: '🎯', free: false, description: 'Stable Diffusion 3' },
+]
+
 export const IMAGE_ASPECT_RATIOS = [
   { id: '1:1', label: 'Square', width: 1024, height: 1024, desc: 'Feed posts' },
   { id: '9:16', label: 'Portrait', width: 768, height: 1344, desc: 'Stories / Reels' },

@@ -85,7 +85,7 @@ async function saveToLocal(buffer: Buffer, filename: string): Promise<string> {
 // ─── Main entry ──────────────────────────────────────────────────────
 
 export async function generateImage(options: ImageGenOptions): Promise<ImageGenResult> {
-  const provider = (process.env.IMAGE_PROVIDER || 'pollinations') as ImageProvider
+  const provider = (process.env.IMAGE_PROVIDER || 'replicate') as ImageProvider
   const enhancedPrompt = options.style
     ? options.prompt + (STYLE_SUFFIXES[options.style] || '')
     : options.prompt

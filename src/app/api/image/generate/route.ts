@@ -82,8 +82,9 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error) {
-    logger.error('Image generation error', { error: error instanceof Error ? error.message : String(error) })
+    const errMsg = error instanceof Error ? error.message : String(error)
+    logger.error('Image generation error', { error: errMsg })
     done(500)
-    return serverError('Image generation failed. Please try again.')
+    return serverError(`Image generation failed: ${errMsg}`)
   }
 }

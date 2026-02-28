@@ -21,7 +21,7 @@ import type { ImageStyle } from '@/lib/image-constants'
 
 // ─── Environment detection ──────────────────────────────────────────
 
-const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
 // ─── Types ────────────────────────────────────────────────────────────
 

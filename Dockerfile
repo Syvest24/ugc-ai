@@ -40,6 +40,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 ENV NODE_ENV=production
+# Ensure Railway is detected as a cloud environment (for file storage decisions)
+ENV RAILWAY_ENVIRONMENT=production
 # Let Railway set PORT via env var (defaults to 8080)
 # Next.js reads PORT automatically
 

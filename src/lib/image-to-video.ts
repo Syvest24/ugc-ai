@@ -13,7 +13,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 
-const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
 export interface ImageToVideoOptions {
   /** URL or local path of the source image */

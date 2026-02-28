@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 
-const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
 // Platform aspect ratios and dimensions
 export const PLATFORM_DIMENSIONS: Record<string, { width: number; height: number }> = {

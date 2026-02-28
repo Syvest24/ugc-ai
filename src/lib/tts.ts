@@ -102,24 +102,16 @@ export async function generateTTS(
     writeStream.on('finish', () => {
       tts.close()
 
-      if (IS_SERVERLESS) {
-        // On serverless, convert to data URI since /tmp isn't publicly accessible
-        const audioBuffer = fs.readFileSync(audioPath)
-        const dataUri = `data:audio/mpeg;base64,${audioBuffer.toString('base64')}`
-        // Clean up temp file
-        try { fs.unlinkSync(audioPath) } catch { /* ignore */ }
-        resolve({
-          audioPath: dataUri,
-          duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
-          wordBoundaries,
-        })
-      } else {
-        resolve({
-          audioPath: `/generated/audio/${id}.mp3`,
-          duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
-          wordBoundaries,
-        })
-      }
+      // Return a serveable URL path (the /api/generated/ route handles serving from /tmp)
+      const servePath = IS_SERVERLESS
+        ? `/api/generated/audio/${id}.mp3`
+        : `/generated/audio/${id}.mp3`
+
+      resolve({
+        audioPath: servePath,
+        duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
+        wordBoundaries,
+      })
     })
 
     writeStream.on('error', (err) => {

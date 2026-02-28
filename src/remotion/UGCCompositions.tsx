@@ -14,6 +14,20 @@ import { HookText } from './components/HookText'
 import { Background } from './components/Background'
 import { ProgressBar, CTAOverlay, Watermark } from './components/Overlays'
 
+/**
+ * Resolve audio source path for Remotion rendering.
+ * Handles absolute filesystem paths (from server-side rendering) and
+ * relative paths that need staticFile() resolution.
+ */
+function resolveAudioSrc(audioSrc: string): string {
+  // Absolute paths (e.g., /tmp/generated/audio/xxx.mp3 or /Users/.../public/generated/...)
+  if (audioSrc.startsWith('/tmp/') || audioSrc.startsWith('/Users/') || audioSrc.startsWith('/home/')) {
+    return audioSrc
+  }
+  // Relative paths for staticFile
+  return staticFile(audioSrc.replace('/generated/', 'generated/'))
+}
+
 export interface UGCVideoProps {
   hook: string
   scriptLines: string[]
@@ -57,7 +71,7 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
 
       {/* Audio */}
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Hook (first 3 seconds) */}
@@ -143,7 +157,7 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
       <ProgressBar color={colorAccent} />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Hook */}
@@ -260,7 +274,7 @@ export const SplitScreenVideo: React.FC<UGCVideoProps> = ({
       </div>
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       <ProgressBar color={colorAccent} />
@@ -312,7 +326,7 @@ export const CountdownVideo: React.FC<UGCVideoProps> = ({
       <ProgressBar color={colorAccent} />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Hook */}
@@ -446,7 +460,7 @@ export const TestimonialVideo: React.FC<UGCVideoProps> = ({
       <ProgressBar color={colorAccent} />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Hook as intro */}
@@ -662,7 +676,7 @@ export const BeforeAfterVideo: React.FC<UGCVideoProps> = ({
       <ProgressBar color={colorAccent} />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Hook */}
@@ -814,7 +828,7 @@ export const ProductShowcaseVideo: React.FC<UGCVideoProps> = ({
       <ProgressBar color={colorAccent} />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Hook with product name feel */}
@@ -1027,7 +1041,7 @@ export const CinematicVideo: React.FC<UGCVideoProps> = ({
       />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Cinematic letterbox bars */}
@@ -1160,7 +1174,7 @@ export const NeonVideo: React.FC<UGCVideoProps> = ({
       />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Neon grid floor effect */}
@@ -1297,7 +1311,7 @@ export const MinimalistVideo: React.FC<UGCVideoProps> = ({
       ) : null}
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Thin accent line at top */}
@@ -1417,7 +1431,7 @@ export const MagazineVideo: React.FC<UGCVideoProps> = ({
       />
 
       {audioSrc && (
-        <Audio src={staticFile(audioSrc.replace('/generated/', 'generated/'))} />
+        <Audio src={resolveAudioSrc(audioSrc)} />
       )}
 
       {/* Editorial accent bar on left */}

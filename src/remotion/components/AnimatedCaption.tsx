@@ -32,13 +32,13 @@ export const AnimatedCaption: React.FC<AnimatedCaptionProps> = ({
   const { fps } = useVideoConfig()
   const currentTimeMs = (frame / fps) * 1000
 
-  // Group words into lines (max 4 words per line for readability)
+  // Group words into lines (max 6 words per line for readability)
   const lines: { text: string; startMs: number; endMs: number }[][] = []
   let currentLine: typeof words = []
 
   for (const word of words) {
     currentLine.push(word)
-    if (currentLine.length >= 4 || word.text.endsWith('.') || word.text.endsWith('!') || word.text.endsWith('?')) {
+    if (currentLine.length >= 6 || word.text.endsWith('.') || word.text.endsWith('!') || word.text.endsWith('?') || word.text.endsWith(',')) {
       lines.push([...currentLine])
       currentLine = []
     }

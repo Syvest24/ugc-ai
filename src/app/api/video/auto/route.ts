@@ -42,6 +42,35 @@ const autoVideoSchema = z.object({
 
 type AutoVideoRequest = z.infer<typeof autoVideoSchema>
 
+/**
+ * Clean up AI-generated script into video-ready lines.
+ * Strips stage directions like [PAUSE], [HOLD UP PRODUCT], etc.
+ * Merges very short lines together for better on-screen display.
+ */
+function cleanScriptLines(rawScript: string): string[] {
+  // Strip all stage direction markers: [PAUSE], [HOLD UP PRODUCT], [POINT TO TEXT], etc.
+  const lines = rawScript
+    .split('\n')
+    .map(l => l.replace(/\[.*?\]/g, '').trim())  // remove ALL bracketed directions
+    .filter(l => l.length > 3)  // filter out empty/very short
+    .slice(0, 12)
+
+  // Merge consecutive short lines (under 30 chars) into single lines
+  const merged: string[] = []
+  let buffer = ''
+  for (const line of lines) {
+    if (buffer && (buffer.length + line.length) < 80) {
+      buffer += ' ' + line
+    } else {
+      if (buffer) merged.push(buffer)
+      buffer = line
+    }
+  }
+  if (buffer) merged.push(buffer)
+
+  return merged.slice(0, 8)
+}
+
 export async function POST(req: NextRequest) {
   let done = (_status: number, _extra?: Record<string, unknown>) => {}
   try {
@@ -86,12 +115,8 @@ export async function POST(req: NextRequest) {
       const hookBank = parseJsonField<string[]>(content.hookBank, [])
       hook = hookBank[0] || 'Check this out!'
 
-      // Extract script lines
-      scriptLines = (content.script || '')
-        .split('\n')
-        .map((l: string) => l.replace(/^\[.*?\]\s*/, '').trim())
-        .filter((l: string) => l.length > 0)
-        .slice(0, 8)
+      // Extract script lines — clean up stage directions and merge short lines
+      scriptLines = cleanScriptLines((content.script || ''))
 
       // Extract CTA (first from ctaVariations, or fallback to ctaType)
       const ctaVariations = parseJsonField<string[]>(content.ctaVariations, [])
@@ -100,11 +125,7 @@ export async function POST(req: NextRequest) {
       platform = content.platform
     } else if (body.hook && body.script) {
       hook = body.hook
-      scriptLines = body.script
-        .split('\n')
-        .map(l => l.replace(/^\[.*?\]\s*/, '').trim())
-        .filter(l => l.length > 0)
-        .slice(0, 8)
+      scriptLines = cleanScriptLines(body.script)
       cta = body.cta || 'Link in Bio'
       platform = body.platform || 'tiktok'
     } else {

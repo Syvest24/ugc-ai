@@ -106,12 +106,26 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
       webpackOverride: (config: Record<string, unknown>) => config,
     })
 
+    // Resolve audio source to absolute path for Remotion rendering
+    let resolvedAudioSrc = input.audioSrc
+    if (resolvedAudioSrc) {
+      // Convert URL paths to absolute filesystem paths for Remotion
+      if (resolvedAudioSrc.startsWith('/api/generated/')) {
+        // Serverless: audio is in /tmp/generated/
+        const relativePart = resolvedAudioSrc.replace('/api/generated/', '')
+        resolvedAudioSrc = path.join('/tmp', 'generated', relativePart)
+      } else if (resolvedAudioSrc.startsWith('/generated/')) {
+        // Local dev: audio is in public/generated/
+        resolvedAudioSrc = path.join(process.cwd(), 'public', resolvedAudioSrc)
+      }
+    }
+
     const inputProps = {
       hook: input.hook,
       scriptLines: input.scriptLines,
       caption: '',
       cta: input.cta,
-      audioSrc: input.audioSrc,
+      audioSrc: resolvedAudioSrc,
       backgroundImage: input.backgroundImage,
       wordBoundaries: input.wordBoundaries || [],
       captionStyle: input.captionStyle || 'karaoke',
@@ -156,7 +170,9 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
     await renderMedia(renderOptions as Parameters<typeof renderMedia>[0])
 
     return {
-      videoPath: `/generated/video/${videoId}.${ext}`,
+      videoPath: IS_SERVERLESS
+        ? `/api/generated/video/${videoId}.${ext}`
+        : `/generated/video/${videoId}.${ext}`,
       durationMs: effectiveDurationMs,
       width: scaledWidth,
       height: scaledHeight,

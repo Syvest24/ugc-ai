@@ -100,23 +100,39 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
     const { bundle } = await import('@remotion/bundler' as string)
     const { renderMedia, selectComposition } = await import('@remotion/renderer')
 
+    console.log(`[Render] Starting: template=${input.template}, duration=${effectiveDurationMs}ms, format=${format}, ${scaledWidth}x${scaledHeight}`)
+
     // Bundle the Remotion project
     const bundleLocation = await bundle({
       entryPoint: path.join(process.cwd(), 'src', 'remotion', 'index.ts'),
       webpackOverride: (config: Record<string, unknown>) => config,
     })
+    console.log(`[Render] Bundle created at: ${bundleLocation}`)
 
-    // Resolve audio source to absolute path for Remotion rendering
+    // Resolve audio source: copy audio file into the Remotion bundle
+    // so headless Chromium can access it via the bundle's HTTP server.
     let resolvedAudioSrc = input.audioSrc
     if (resolvedAudioSrc) {
-      // Convert URL paths to absolute filesystem paths for Remotion
+      // Convert URL paths to absolute filesystem paths
+      let absoluteAudioPath: string | null = null
       if (resolvedAudioSrc.startsWith('/api/generated/')) {
-        // Serverless: audio is in /tmp/generated/
         const relativePart = resolvedAudioSrc.replace('/api/generated/', '')
-        resolvedAudioSrc = path.join('/tmp', 'generated', relativePart)
+        absoluteAudioPath = path.join('/tmp', 'generated', relativePart)
       } else if (resolvedAudioSrc.startsWith('/generated/')) {
-        // Local dev: audio is in public/generated/
-        resolvedAudioSrc = path.join(process.cwd(), 'public', resolvedAudioSrc)
+        absoluteAudioPath = path.join(process.cwd(), 'public', resolvedAudioSrc)
+      } else if (resolvedAudioSrc.startsWith('/tmp/') || resolvedAudioSrc.startsWith('/Users/') || resolvedAudioSrc.startsWith('/home/')) {
+        absoluteAudioPath = resolvedAudioSrc
+      }
+
+      // Copy audio file into the Remotion bundle so Chromium can serve it
+      if (absoluteAudioPath && fs.existsSync(absoluteAudioPath)) {
+        const audioFilename = path.basename(absoluteAudioPath)
+        fs.copyFileSync(absoluteAudioPath, path.join(bundleLocation, audioFilename))
+        resolvedAudioSrc = `/${audioFilename}` // served from bundle root
+        console.log(`[Render] Copied audio to bundle: ${audioFilename}`)
+      } else {
+        console.warn(`[Render] Audio file not found: ${absoluteAudioPath || resolvedAudioSrc}`)
+        resolvedAudioSrc = undefined
       }
     }
 
@@ -166,8 +182,30 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
       renderOptions.crf = qualityPreset.crf
     }
 
+    // Add progress logging and browser error capture
+    renderOptions.onBrowserLog = (log: { text: string; type: string }) => {
+      if (log.type === 'error') {
+        console.error(`[Render] Browser error: ${log.text}`)
+      }
+    }
+
+    console.log(`[Render] Starting renderMedia for ${input.template}...`)
+
     // Render
     await renderMedia(renderOptions as Parameters<typeof renderMedia>[0])
+
+    console.log(`[Render] Completed: ${outputPath}`)
+
+    // Verify output file was created
+    if (!fs.existsSync(outputPath)) {
+      throw new Error('Render completed but output file was not created')
+    }
+    const outputStat = fs.statSync(outputPath)
+    if (outputStat.size === 0) {
+      fs.unlinkSync(outputPath)
+      throw new Error('Render completed but output file is empty')
+    }
+    console.log(`[Render] Output file size: ${(outputStat.size / 1024 / 1024).toFixed(2)}MB`)
 
     return {
       videoPath: IS_SERVERLESS

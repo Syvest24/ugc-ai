@@ -635,7 +635,7 @@ export default function VideoPage() {
             colorAccent={colorAccent}
             captionStyle={captionStyle}
             hookStyle={hookStyle}
-            backgroundImage={selectedClip?.previewUrl}
+            backgroundImage={aiImageUrl || selectedClip?.previewUrl}
             platform={platform}
           />
         )}

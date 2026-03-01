@@ -50,6 +50,8 @@ export async function generateTTS(
 ): Promise<TTSResult> {
   ensureDir(OUTPUT_DIR)
 
+  console.log(`[TTS] Generating: voice=${voiceId}, rate=${rate}, text=${text.substring(0, 60)}...`)
+
   const tts = new MsEdgeTTS()
   const voiceName = VOICES[voiceId]
   await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3, {
@@ -102,6 +104,14 @@ export async function generateTTS(
     writeStream.on('finish', () => {
       tts.close()
 
+      // Verify audio file has content
+      const stat = fs.statSync(audioPath)
+      console.log(`[TTS] Audio file created: ${audioPath} (${(stat.size / 1024).toFixed(1)}KB, ${wordBoundaries.length} word boundaries)`)
+      if (stat.size === 0) {
+        reject(new Error('TTS generated an empty audio file'))
+        return
+      }
+
       // Return a serveable URL path (the /api/generated/ route handles serving from /tmp)
       const servePath = IS_SERVERLESS
         ? `/api/generated/audio/${id}.mp3`
@@ -123,6 +133,40 @@ export async function generateTTS(
       tts.close()
       reject(err)
     })
+
+    // Timeout: prevent hanging if TTS WebSocket stalls
+    const timeout = setTimeout(() => {
+      tts.close()
+      // Check if we got partial audio
+      if (fs.existsSync(audioPath)) {
+        const stat = fs.statSync(audioPath)
+        if (stat.size > 0) {
+          console.warn(`[TTS] Timeout but partial audio saved (${(stat.size / 1024).toFixed(1)}KB)`)
+          const servePath = IS_SERVERLESS
+            ? `/api/generated/audio/${id}.mp3`
+            : `/generated/audio/${id}.mp3`
+          resolve({
+            audioPath: servePath,
+            duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
+            wordBoundaries,
+          })
+          return
+        }
+      }
+      reject(new Error('TTS generation timed out after 60 seconds'))
+    }, 60000)
+
+    // Clear timeout on success
+    const originalResolve = resolve
+    resolve = ((value: TTSResult) => {
+      clearTimeout(timeout)
+      originalResolve(value)
+    }) as typeof resolve
+    const originalReject = reject
+    reject = ((reason: unknown) => {
+      clearTimeout(timeout)
+      originalReject(reason)
+    }) as typeof reject
   })
 }
 

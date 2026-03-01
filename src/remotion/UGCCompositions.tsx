@@ -16,16 +16,22 @@ import { ProgressBar, CTAOverlay, Watermark } from './components/Overlays'
 
 /**
  * Resolve audio source path for Remotion rendering.
- * Handles absolute filesystem paths (from server-side rendering) and
- * relative paths that need staticFile() resolution.
+ * During server-side rendering, audio is copied into the bundle directory
+ * and passed as a root-relative path (e.g., "/tts-xxx.mp3").
+ * For local preview, it may use staticFile().
  */
 function resolveAudioSrc(audioSrc: string): string {
-  // Absolute paths (e.g., /tmp/generated/audio/xxx.mp3 or /Users/.../public/generated/...)
-  if (audioSrc.startsWith('/tmp/') || audioSrc.startsWith('/Users/') || audioSrc.startsWith('/home/')) {
+  // Root-relative paths from the bundle (e.g., "/tts-xxx.mp3")
+  // These are served by Remotion's HTTP server directly
+  if (audioSrc.startsWith('/') && !audioSrc.startsWith('/generated/')) {
     return audioSrc
   }
-  // Relative paths for staticFile
-  return staticFile(audioSrc.replace('/generated/', 'generated/'))
+  // Relative paths for staticFile (local dev public/ files)
+  try {
+    return staticFile(audioSrc.replace('/generated/', 'generated/'))
+  } catch {
+    return audioSrc
+  }
 }
 
 export interface UGCVideoProps {

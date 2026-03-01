@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return badRequest('Missing required fields: hook, scriptLines, cta, template')
     }
 
-    const validTemplates = ['CaptionStyle', 'TextOnScreen', 'SplitScreen', 'Countdown', 'Testimonial', 'BeforeAfter', 'ProductShowcase']
+    const validTemplates = ['CaptionStyle', 'TextOnScreen', 'SplitScreen', 'Countdown', 'Testimonial', 'BeforeAfter', 'ProductShowcase', 'Cinematic', 'Neon', 'Minimalist', 'Magazine']
     if (!validTemplates.includes(body.template)) {
       done(400)
       return badRequest(`Invalid template. Choose from: ${validTemplates.join(', ')}`)

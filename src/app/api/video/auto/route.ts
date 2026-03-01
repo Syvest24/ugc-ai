@@ -30,7 +30,7 @@ const autoVideoSchema = z.object({
   productName: z.string().max(200).optional(),
   productDescription: z.string().max(2000).optional(),
   platform: z.string().max(50).optional(),
-  template: z.enum(['CaptionStyle', 'TextOnScreen', 'SplitScreen', 'Countdown', 'Testimonial', 'BeforeAfter', 'ProductShowcase']).optional(),
+  template: z.enum(['CaptionStyle', 'TextOnScreen', 'SplitScreen', 'Countdown', 'Testimonial', 'BeforeAfter', 'ProductShowcase', 'Cinematic', 'Neon', 'Minimalist', 'Magazine']).optional(),
   voice: z.string().max(50).optional(),
   voiceRate: z.string().max(20).optional(),
   captionStyle: z.string().max(50).optional(),

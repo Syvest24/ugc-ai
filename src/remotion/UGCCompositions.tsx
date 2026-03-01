@@ -12,6 +12,7 @@ import {
 import { AnimatedCaption } from './components/AnimatedCaption'
 import { HookText } from './components/HookText'
 import { Background } from './components/Background'
+import { SceneBackground } from './components/SceneBackground'
 import { ProgressBar, CTAOverlay, Watermark } from './components/Overlays'
 
 /**
@@ -41,10 +42,40 @@ export interface UGCVideoProps {
   cta: string
   audioSrc?: string
   backgroundImage?: string
+  sceneImages?: string[] // per-scene background images (one per scriptLine)
   wordBoundaries?: { text: string; startMs: number; endMs: number }[]
   captionStyle?: 'karaoke' | 'word-by-word' | 'fade'
   hookStyle?: 'pop' | 'typewriter' | 'slide'
   colorAccent?: string
+}
+
+/**
+ * Calculate scene timing from word boundaries.
+ * Splits the word boundaries into per-scene timing so each scriptLine
+ * gets the right portion of the audio timeline.
+ */
+function getSceneTiming(
+  scriptLines: string[],
+  wordBoundaries: { text: string; startMs: number; endMs: number }[],
+  fps: number,
+  durationInFrames: number,
+  hookDurationSec: number = 3,
+  ctaDurationSec: number = 4
+) {
+  const hookFrames = Math.floor(fps * hookDurationSec)
+  const ctaFrames = Math.floor(fps * ctaDurationSec)
+  const contentFrames = durationInFrames - hookFrames - ctaFrames
+  const framesPerLine = scriptLines.length > 0
+    ? Math.floor(contentFrames / scriptLines.length)
+    : contentFrames
+
+  return {
+    hookFrames,
+    ctaFrames,
+    contentFrames,
+    framesPerLine,
+    getSceneStart: (index: number) => hookFrames + index * framesPerLine,
+  }
 }
 
 // Template 1: Caption Style (TikTok/Reels style with animated captions)
@@ -54,6 +85,7 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   wordBoundaries = [],
   captionStyle = 'karaoke',
   hookStyle = 'pop',
@@ -61,14 +93,20 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
-  const hookDurationFrames = Math.floor(fps * 3) // 3 seconds for hook
+  const { hookFrames, ctaFrames, framesPerLine, getSceneStart } =
+    getSceneTiming(scriptLines, wordBoundaries, fps, durationInFrames, 3, 4)
+
+  const sceneStarts = scriptLines.map((_, i) => getSceneStart(i))
 
   return (
     <AbsoluteFill>
-      {/* Background */}
-      <Background
-        type={backgroundImage ? 'image' : 'video-placeholder'}
-        src={backgroundImage}
+      {/* Background — switches per scene if sceneImages provided */}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         overlay={0.5}
       />
 
@@ -84,13 +122,13 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
       <HookText
         text={hook}
         startFrame={0}
-        durationFrames={hookDurationFrames}
+        durationFrames={hookFrames}
         style={hookStyle}
         fontSize={52}
         color="#FFFFFF"
       />
 
-      {/* Animated Captions */}
+      {/* Animated Captions — synced to word boundaries from TTS */}
       {wordBoundaries.length > 0 && (
         <AnimatedCaption
           words={wordBoundaries}
@@ -105,14 +143,13 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
       {wordBoundaries.length === 0 && scriptLines.length > 0 && (
         <>
           {scriptLines.map((line, i) => {
-            const lineStart = hookDurationFrames + i * Math.floor((durationInFrames - hookDurationFrames) / scriptLines.length)
-            const lineDuration = Math.floor((durationInFrames - hookDurationFrames) / scriptLines.length)
+            const lineStart = getSceneStart(i)
             return (
-              <Sequence key={i} from={lineStart} durationInFrames={lineDuration}>
+              <Sequence key={i} from={lineStart} durationInFrames={framesPerLine}>
                 <HookText
                   text={line}
                   startFrame={0}
-                  durationFrames={lineDuration}
+                  durationFrames={framesPerLine}
                   style="pop"
                   fontSize={38}
                 />
@@ -125,8 +162,8 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
       {/* CTA at the end */}
       <CTAOverlay
         text={cta}
-        startFrame={durationInFrames - Math.floor(fps * 4)}
-        durationFrames={Math.floor(fps * 4)}
+        startFrame={durationInFrames - ctaFrames}
+        durationFrames={ctaFrames}
         style="button"
       />
 
@@ -143,21 +180,28 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
+  wordBoundaries = [],
   colorAccent = '#EC4899',
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
   const hookFrames = Math.floor(fps * 3)
-  const contentFrames = durationInFrames - hookFrames - Math.floor(fps * 3) // reserve 3s for CTA
+  const ctaFrames = Math.floor(fps * 3)
+  const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerLine = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerLine)
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
-        gradient="linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)"
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         overlay={0.6}
+        gradient="linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)"
       />
 
       <ProgressBar color={colorAccent} />
@@ -209,6 +253,7 @@ export const SplitScreenVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   wordBoundaries = [],
   colorAccent = '#3B82F6',
 }) => {
@@ -302,6 +347,7 @@ export const CountdownVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   colorAccent = '#F59E0B',
 }) => {
   const frame = useCurrentFrame()
@@ -438,6 +484,7 @@ export const TestimonialVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   wordBoundaries = [],
   colorAccent = '#10B981',
 }) => {
@@ -639,6 +686,7 @@ export const BeforeAfterVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   colorAccent = '#EF4444',
 }) => {
   const frame = useCurrentFrame()
@@ -810,6 +858,7 @@ export const ProductShowcaseVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   colorAccent = '#8B5CF6',
 }) => {
   const frame = useCurrentFrame()
@@ -1021,6 +1070,7 @@ export const CinematicVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   wordBoundaries = [],
   captionStyle = 'fade',
   colorAccent = '#D4AF37',
@@ -1155,6 +1205,7 @@ export const NeonVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   colorAccent = '#00F0FF',
 }) => {
   const frame = useCurrentFrame()
@@ -1301,6 +1352,7 @@ export const MinimalistVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   colorAccent = '#111111',
 }) => {
   const frame = useCurrentFrame()
@@ -1417,6 +1469,7 @@ export const MagazineVideo: React.FC<UGCVideoProps> = ({
   cta,
   audioSrc,
   backgroundImage,
+  sceneImages = [],
   colorAccent = '#C8102E',
 }) => {
   const frame = useCurrentFrame()

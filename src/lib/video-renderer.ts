@@ -34,6 +34,7 @@ export interface VideoRenderInput {
   cta: string
   audioSrc?: string
   backgroundImage?: string
+  sceneImages?: string[] // per-scene AI-generated background images
   wordBoundaries?: { text: string; startMs: number; endMs: number }[]
   platform: string
   durationMs?: number
@@ -143,6 +144,7 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
       cta: input.cta,
       audioSrc: resolvedAudioSrc,
       backgroundImage: input.backgroundImage,
+      sceneImages: input.sceneImages || [],
       wordBoundaries: input.wordBoundaries || [],
       captionStyle: input.captionStyle || 'karaoke',
       hookStyle: input.hookStyle || 'pop',

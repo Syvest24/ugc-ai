@@ -56,6 +56,11 @@ export default function VideoPage() {
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null)
   const [aiImagesLoading, setAiImagesLoading] = useState(false)
 
+  // Per-scene AI backgrounds
+  const [sceneImages, setSceneImages] = useState<(string | null)[]>([])
+  const [scenesLoading, setScenesLoading] = useState(false)
+  const [sceneProvider, setSceneProvider] = useState<'pollinations' | 'gemini'>('pollinations')
+
   // Video settings
   const [selectedTemplate, setSelectedTemplate] = useState('CaptionStyle')
   const [captionStyle, setCaptionStyle] = useState('karaoke')
@@ -188,11 +193,18 @@ export default function VideoPage() {
     }
     setTtsLoading(true)
     try {
+      // Include hook + script + CTA so word boundaries match the full video timeline
+      const fullText = [
+        hookText || 'Check this out',
+        scriptText,
+        ctaText || 'Link in Bio',
+      ].join('. ')
+
       const res = await fetch('/api/video/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: scriptText,
+          text: fullText,
           voice: selectedVoice,
           rate: voiceRate,
         }),
@@ -268,6 +280,47 @@ export default function VideoPage() {
     }
   }
 
+  const handleGenerateScenes = async () => {
+    const lines = scriptText
+      .split('\n')
+      .map(l => l.replace(/^\[.*?\]\s*/, '').trim())
+      .filter(l => l.length > 0)
+      .slice(0, 8)
+
+    if (lines.length === 0) {
+      toast.error('Write your script first so we can generate matching scenes')
+      return
+    }
+
+    setScenesLoading(true)
+    toast.loading(`Generating ${lines.length} scene backgrounds...`, { id: 'scenes' })
+
+    try {
+      const res = await fetch('/api/video/scenes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scriptLines: lines,
+          productName: productName || undefined,
+          style: 'cinematic',
+          provider: sceneProvider,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Scene generation failed', { id: 'scenes' })
+        return
+      }
+      setSceneImages(data.data.images)
+      const generated = data.data.images.filter(Boolean).length
+      toast.success(`Generated ${generated}/${data.data.total} scene backgrounds!`, { id: 'scenes' })
+    } catch {
+      toast.error('Failed to generate scene backgrounds', { id: 'scenes' })
+    } finally {
+      setScenesLoading(false)
+    }
+  }
+
   const handleRenderVideo = async () => {
     if (!scriptText.trim() || !hookText.trim()) {
       toast.error('Script text and hook are required')
@@ -296,6 +349,7 @@ export default function VideoPage() {
           cta: ctaText,
           audioSrc: ttsResult?.audioUrl,
           backgroundImage: aiImageUrl || selectedClip?.url,
+          sceneImages: sceneImages.filter(Boolean),
           wordBoundaries: ttsResult?.wordBoundaries,
           platform,
           durationMs: ttsResult?.duration ? ttsResult.duration + 3000 : 30000,
@@ -455,6 +509,64 @@ export default function VideoPage() {
               {aiImagesLoading ? 'Loading...' : 'Use AI Images'}
             </button>
           </div>
+
+            {/* Per-scene AI background generation */}
+            <div className="bg-gray-800/40 border border-gray-700/50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
+                    AI Scene Backgrounds
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-0.5">Generate unique backgrounds for each script line</p>
+                </div>
+                <select
+                  value={sceneProvider}
+                  onChange={e => setSceneProvider(e.target.value as 'pollinations' | 'gemini')}
+                  className="rounded-md border border-gray-600 bg-gray-700/50 px-2 py-1.5 text-xs text-gray-200 focus:border-violet-500 focus:outline-none"
+                >
+                  <option value="pollinations">Pollinations (Free)</option>
+                  <option value="gemini">Gemini AI</option>
+                </select>
+              </div>
+              <button
+                onClick={handleGenerateScenes}
+                disabled={scenesLoading || !scriptText.trim()}
+                className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 disabled:hover:from-violet-600 disabled:hover:to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all w-full justify-center"
+              >
+                {scenesLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4" />
+                )}
+                {scenesLoading ? 'Generating scenes...' : `Generate Scene Backgrounds (${sceneProvider === 'gemini' ? 'Gemini' : 'Pollinations'})`}
+              </button>
+              {sceneImages.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-400 mb-2">{sceneImages.filter(Boolean).length} scenes generated — each line gets its own background:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {sceneImages.map((img, i) => (
+                      <div key={i} className="relative aspect-[9/16] rounded-lg border border-gray-600 overflow-hidden bg-gray-800">
+                        {img ? (
+                          <img src={img} alt={`Scene ${i + 1}`} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">Failed</div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
+                          <span className="text-[10px] text-gray-300">Scene {i + 1}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setSceneImages([])}
+                    className="mt-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    Clear scenes (use single background instead)
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* AI Generated Images section */}
             {aiImages.length > 0 && (

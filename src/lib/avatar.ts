@@ -75,38 +75,44 @@ export const AVATAR_PRESETS = [
   {
     id: 'ai-woman-1',
     name: 'Professional Woman',
-    prompt: 'professional young woman headshot portrait, neutral background, looking at camera, friendly smile, studio lighting, UGC creator style',
+    prompt: 'photorealistic headshot portrait of a 28 year old professional woman, shoulder-length brown hair, warm brown eyes, natural makeup, wearing a white blouse, soft smile looking directly at camera, studio lighting with softbox, shallow depth of field, neutral gray background, DSLR photograph 85mm f/1.8, detailed skin texture, high resolution',
     category: 'professional',
+    seed: 4201,
   },
   {
     id: 'ai-woman-2',
     name: 'Casual Woman',
-    prompt: 'casual young woman selfie portrait, natural lighting, soft smile, content creator aesthetic, clean background',
+    prompt: 'photorealistic selfie portrait of a 25 year old casual woman content creator, blonde wavy hair, blue eyes, wearing a cozy sweater, genuine friendly smile, golden hour natural window lighting, slightly blurred living room background, iPhone camera style, natural no-makeup look, detailed skin pores, realistic photograph',
     category: 'casual',
+    seed: 4202,
   },
   {
     id: 'ai-man-1',
     name: 'Professional Man',
-    prompt: 'professional young man headshot portrait, neutral background, looking at camera, confident smile, studio lighting, UGC creator style',
+    prompt: 'photorealistic headshot portrait of a 30 year old professional man, short dark hair neatly styled, clean shaven, wearing a navy blue dress shirt, confident subtle smile looking at camera, studio lighting with key and fill lights, neutral background, DSLR photograph 85mm f/1.8, detailed skin texture, crisp sharp focus, high resolution',
     category: 'professional',
+    seed: 4203,
   },
   {
     id: 'ai-man-2',
     name: 'Casual Man',
-    prompt: 'casual young man selfie portrait, natural lighting, friendly expression, content creator aesthetic, clean background',
+    prompt: 'photorealistic selfie portrait of a 26 year old casual man content creator, tousled medium brown hair, light stubble beard, wearing a gray henley t-shirt, relaxed friendly expression, soft natural daylight, minimalist apartment background with bokeh, realistic photograph, detailed skin texture, warm color grading',
     category: 'casual',
+    seed: 4204,
   },
   {
     id: 'ai-diverse-1',
     name: 'Lifestyle Creator',
-    prompt: 'diverse lifestyle content creator portrait, warm lighting, approachable expression, bokeh background, social media influencer style',
+    prompt: 'photorealistic portrait of a 27 year old South Asian woman lifestyle content creator, long dark hair, warm almond eyes, radiant smile, wearing a terracotta linen top, golden hour warm lighting, soft bokeh outdoor cafe background, DSLR 50mm f/1.4 photograph, natural skin texture, vibrant warm tones, social media influencer aesthetic',
     category: 'lifestyle',
+    seed: 4205,
   },
   {
     id: 'ai-diverse-2',
     name: 'Tech Reviewer',
-    prompt: 'tech reviewer portrait, modern setting, confident expression, clean minimalist background, professional content creator',
+    prompt: 'photorealistic headshot of a 29 year old Black man tech reviewer content creator, short fade haircut, well-groomed short beard, wearing a modern charcoal crewneck, intelligent confident expression, clean minimalist white desk background with subtle tech setup, studio ring light, DSLR photograph 85mm f/2.0, sharp detailed skin texture, professional YouTube creator look',
     category: 'tech',
+    seed: 4206,
   },
 ] as const
 
@@ -261,31 +267,31 @@ async function generateWithSadTalker(
   const apiKey = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
   if (!apiKey) throw new Error('REPLICATE_API_TOKEN not configured')
 
-  // SadTalker model on Replicate
-  const createRes = await fetch('https://api.replicate.com/v1/predictions', {
+  // Use official model endpoint (always latest version, no stale hashes)
+  // Try LivePortrait first (better quality), fall back to SadTalker
+  const modelEndpoint = 'https://api.replicate.com/v1/models/cuuupid/liveportrait/predictions'
+
+  const createRes = await fetch(modelEndpoint, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      // SadTalker model version (cjwbw/sadtalker)
-      version: 'a519cc0cfebaaeade068b23899165a11ec76aaa1a4f26b256a8e19e53e93342d',
       input: {
-        source_image: faceImageUrl,
-        driven_audio: audioUrl,
-        still: true, // Less head movement for cleaner results
-        preprocess: 'crop', // Auto-crop face
-        enhancer: 'gfpgan', // Face enhancement
-        pose_style: 0,
-        expression_scale: 1.0,
+        image: faceImageUrl,
+        video: audioUrl, // LivePortrait uses driving video/audio
+        live_portrait_dsize: 512,
+        live_portrait_scale: 2.3,
+        video_select_every_n_frames: 1,
       },
     }),
   })
 
+  // If LivePortrait fails, fall back to SadTalker
   if (!createRes.ok) {
-    const err = await createRes.text()
-    throw new Error(`Replicate API error: ${createRes.status} — ${err}`)
+    console.warn('[Avatar] LivePortrait failed, trying SadTalker...')
+    return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl)
   }
 
   const prediction = await createRes.json()
@@ -298,7 +304,9 @@ async function generateWithSadTalker(
   while (Date.now() - start < maxWait) {
     if (result.status === 'succeeded') break
     if (result.status === 'failed') {
-      throw new Error(`SadTalker failed: ${result.error || 'Unknown error'}`)
+      // Fall back to SadTalker on failure
+      console.warn('[Avatar] LivePortrait generation failed, trying SadTalker...')
+      return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl)
     }
 
     await new Promise(r => setTimeout(r, 3000))
@@ -309,11 +317,11 @@ async function generateWithSadTalker(
   }
 
   if (result.status !== 'succeeded') {
-    throw new Error('SadTalker generation timed out')
+    throw new Error('Avatar generation timed out')
   }
 
-  const outputUrl = result.output
-  if (!outputUrl) throw new Error('SadTalker returned no output')
+  const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output
+  if (!outputUrl) throw new Error('Avatar generation returned no output')
 
   // Download the video
   const videoRes = await fetch(outputUrl)
@@ -329,9 +337,82 @@ async function generateWithSadTalker(
   return {
     videoUrl: servePath,
     provider: 'sadtalker',
-    model: 'sadtalker-replicate',
+    model: 'liveportrait',
     isVideo: true,
     duration: 0, // determined by audio length
+  }
+}
+
+/**
+ * Fallback: SadTalker via Replicate (uses official model endpoint)
+ */
+async function generateWithSadTalkerFallback(
+  apiKey: string,
+  faceImageUrl: string,
+  audioUrl: string,
+): Promise<AvatarResult> {
+  const createRes = await fetch('https://api.replicate.com/v1/models/cjwbw/sadtalker/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      input: {
+        source_image: faceImageUrl,
+        driven_audio: audioUrl,
+        still: true,
+        preprocess: 'crop',
+        enhancer: 'gfpgan',
+        pose_style: 0,
+        expression_scale: 1.0,
+      },
+    }),
+  })
+
+  if (!createRes.ok) {
+    const err = await createRes.text()
+    throw new Error(`Replicate API error: ${createRes.status} — ${err}`)
+  }
+
+  const prediction = await createRes.json()
+  const maxWait = 180_000
+  const start = Date.now()
+  let result = prediction
+
+  while (Date.now() - start < maxWait) {
+    if (result.status === 'succeeded') break
+    if (result.status === 'failed') {
+      throw new Error(`SadTalker failed: ${result.error || 'Unknown error'}`)
+    }
+    await new Promise(r => setTimeout(r, 3000))
+    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    })
+    result = await pollRes.json()
+  }
+
+  if (result.status !== 'succeeded') throw new Error('SadTalker generation timed out')
+
+  const outputUrl = result.output
+  if (!outputUrl) throw new Error('SadTalker returned no output')
+
+  const videoRes = await fetch(outputUrl)
+  const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
+  const filename = `avatar_${crypto.randomUUID().slice(0, 8)}.mp4`
+  const outputPath = path.join(OUTPUT_DIR, filename)
+  await writeFile(outputPath, videoBuffer)
+
+  const servePath = IS_SERVERLESS
+    ? `/api/generated/avatar/${filename}`
+    : `/generated/avatar/${filename}`
+
+  return {
+    videoUrl: servePath,
+    provider: 'sadtalker',
+    model: 'sadtalker-replicate',
+    isVideo: true,
+    duration: 0,
   }
 }
 
@@ -363,8 +444,8 @@ async function generateStatic(
  */
 export function generateAvatarFaceUrl(prompt: string, seed?: number): string {
   const params = new URLSearchParams({
-    width: '512',
-    height: '512',
+    width: '768',
+    height: '768',
     model: 'flux',
     nologo: 'true',
     enhance: 'true',
@@ -373,6 +454,16 @@ export function generateAvatarFaceUrl(prompt: string, seed?: number): string {
 
   const encodedPrompt = encodeURIComponent(prompt)
   return `https://image.pollinations.ai/prompt/${encodedPrompt}?${params}`
+}
+
+/**
+ * Get a stable preview thumbnail URL for an avatar preset.
+ * Uses a fixed seed per preset so the preview is deterministic.
+ */
+export function getPresetPreviewUrl(presetId: string): string | null {
+  const preset = AVATAR_PRESETS.find(p => p.id === presetId)
+  if (!preset) return null
+  return generateAvatarFaceUrl(preset.prompt, preset.seed)
 }
 
 /**

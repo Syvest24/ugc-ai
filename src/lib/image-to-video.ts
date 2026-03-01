@@ -112,73 +112,113 @@ async function generateWithReplicate(
   const apiKey = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
   if (!apiKey) throw new Error('REPLICATE_API_TOKEN not configured')
 
-  // Use Stable Video Diffusion model
-  const response = await fetch('https://api.replicate.com/v1/predictions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      version: 'dc76b3a17e5ae17060a208425df0a801a0d94855b49bcbc94a3358ca2b35d48d',
+  // Try multiple Replicate image-to-video models (official model endpoints)
+  const models = [
+    {
+      url: 'https://api.replicate.com/v1/models/stability-ai/stable-video-diffusion/predictions',
+      name: 'stable-video-diffusion',
       input: {
         input_image: imageUrl,
-        video_length: Math.min(duration * fps, 25), // SVD max 25 frames
+        video_length: Math.min(duration * fps, 25),
         sizing_strategy: 'maintain_aspect_ratio',
         frames_per_second: fps,
-        motion_bucket_id: 127, // Higher = more motion
+        motion_bucket_id: 127,
         decoding_t: 14,
       },
-    }),
-  })
+    },
+    {
+      url: 'https://api.replicate.com/v1/models/tencent/hunyuan-video/predictions',
+      name: 'hunyuan-video',
+      input: {
+        image: imageUrl,
+        prompt: 'smooth cinematic camera motion, high quality',
+        num_frames: Math.min(duration * fps, 30),
+        fps,
+      },
+    },
+  ]
 
-  if (!response.ok) {
-    throw new Error(`Replicate API error: ${response.status}`)
-  }
+  let lastError = ''
+  for (const model of models) {
+    try {
+      const response = await fetch(model.url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input: model.input }),
+      })
 
-  const prediction = await response.json()
+      if (!response.ok) {
+        const errText = await response.text()
+        console.warn(`[I2V] ${model.name} failed: ${response.status} — ${errText}`)
+        lastError = `${model.name}: ${response.status}`
+        continue
+      }
 
-  // Poll for completion
-  let result = prediction
-  while (result.status !== 'succeeded' && result.status !== 'failed') {
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    const poll = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    })
-    result = await poll.json()
-  }
+      const prediction = await response.json()
 
-  if (result.status === 'failed') {
-    throw new Error(`Video generation failed: ${result.error}`)
-  }
+      // Poll for completion (max 3 min)
+      let result = prediction
+      const maxWait = 180_000
+      const start = Date.now()
+      while (Date.now() - start < maxWait && result.status !== 'succeeded' && result.status !== 'failed') {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        const poll = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        })
+        result = await poll.json()
+      }
 
-  if (IS_SERVERLESS) {
-    // On serverless, return Replicate's hosted URL directly
-    return {
-      videoUrl: result.output,
-      provider: 'replicate',
-      model: 'stable-video-diffusion',
-      duration,
-      width,
-      height,
+      if (result.status === 'failed') {
+        console.warn(`[I2V] ${model.name} generation failed: ${result.error}`)
+        lastError = `${model.name}: ${result.error}`
+        continue
+      }
+
+      if (result.status !== 'succeeded') {
+        lastError = `${model.name}: timed out`
+        continue
+      }
+
+      const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output
+
+      if (IS_SERVERLESS) {
+        return {
+          videoUrl: outputUrl,
+          provider: 'replicate',
+          model: model.name,
+          duration,
+          width,
+          height,
+        }
+      }
+
+      // Download and save the video locally
+      const videoResponse = await fetch(outputUrl)
+      const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+      const filename = `vid_${crypto.randomUUID().slice(0, 8)}.mp4`
+      const outputPath = path.join(OUTPUT_DIR, filename)
+      await writeFile(outputPath, videoBuffer)
+
+      return {
+        videoUrl: `/generated-videos/from-image/${filename}`,
+        provider: 'replicate',
+        model: model.name,
+        duration,
+        width,
+        height,
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.warn(`[I2V] ${model.name} error: ${msg}`)
+      lastError = msg
+      continue
     }
   }
 
-  // Download and save the video locally
-  const videoResponse = await fetch(result.output)
-  const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
-  const filename = `vid_${crypto.randomUUID().slice(0, 8)}.mp4`
-  const outputPath = path.join(OUTPUT_DIR, filename)
-  await writeFile(outputPath, videoBuffer)
-
-  return {
-    videoUrl: `/generated-videos/from-image/${filename}`,
-    provider: 'replicate',
-    model: 'stable-video-diffusion',
-    duration,
-    width,
-    height,
-  }
+  throw new Error(`All Replicate models failed. Last error: ${lastError}`)
 }
 
 // ---------- Provider: Pollinations.ai ----------

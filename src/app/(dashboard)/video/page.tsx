@@ -753,26 +753,37 @@ export default function VideoPage() {
 
             {/* Avatar preset selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Generate AI Avatar Face</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Choose AI Avatar</label>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {[
-                  { id: 'ai-woman-1', emoji: '👩', label: 'Pro Woman' },
-                  { id: 'ai-woman-2', emoji: '👩‍🦰', label: 'Casual Woman' },
-                  { id: 'ai-man-1', emoji: '👨', label: 'Pro Man' },
-                  { id: 'ai-man-2', emoji: '👨‍🦱', label: 'Casual Man' },
-                  { id: 'ai-diverse-1', emoji: '🧑', label: 'Lifestyle' },
-                  { id: 'ai-diverse-2', emoji: '🧑‍💻', label: 'Tech' },
-                ].map(preset => (
-                  <button
-                    key={preset.id}
-                    onClick={() => handleGenerateAvatarFace(preset.id)}
-                    disabled={avatarLoading}
-                    className="flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-700 bg-gray-800/30 hover:border-violet-500/50 hover:bg-violet-600/10 disabled:opacity-50 transition-all text-center"
-                  >
-                    <span className="text-2xl">{preset.emoji}</span>
-                    <span className="text-[10px] text-gray-400">{preset.label}</span>
-                  </button>
-                ))}
+                  { id: 'ai-woman-1', label: 'Pro Woman' },
+                  { id: 'ai-woman-2', label: 'Casual Woman' },
+                  { id: 'ai-man-1', label: 'Pro Man' },
+                  { id: 'ai-man-2', label: 'Casual Man' },
+                  { id: 'ai-diverse-1', label: 'Lifestyle' },
+                  { id: 'ai-diverse-2', label: 'Tech' },
+                ].map(preset => {
+                  const previewUrl = `/api/video/avatar/preview?preset=${preset.id}`
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => handleGenerateAvatarFace(preset.id)}
+                      disabled={avatarLoading}
+                      className="flex flex-col items-center gap-1.5 p-2 rounded-lg border border-gray-700 bg-gray-800/30 hover:border-violet-500/50 hover:bg-violet-600/10 disabled:opacity-50 transition-all text-center group"
+                    >
+                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-600 group-hover:border-violet-500/60 transition-colors bg-gray-700">
+                        <img
+                          src={previewUrl}
+                          alt={preset.label}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-gray-400 group-hover:text-gray-300">{preset.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 

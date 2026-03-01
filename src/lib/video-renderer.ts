@@ -41,6 +41,13 @@ export interface VideoRenderInput {
   captionStyle?: 'karaoke' | 'word-by-word' | 'fade'
   hookStyle?: 'pop' | 'typewriter' | 'slide'
   colorAccent?: string
+  // Avatar / Talking Head
+  avatarFaceUrl?: string
+  avatarVideoUrl?: string
+  avatarIsVideo?: boolean
+  avatarPosition?: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
+  avatarShape?: 'circle' | 'rounded' | 'rectangle'
+  avatarSize?: 'small' | 'medium' | 'large'
   // Export options
   aspectRatio?: '9:16' | '1:1' | '16:9' | '4:5'
   quality?: 'draft' | 'standard' | 'high'
@@ -149,6 +156,13 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
       captionStyle: input.captionStyle || 'karaoke',
       hookStyle: input.hookStyle || 'pop',
       colorAccent: input.colorAccent || '#A855F7',
+      // Avatar
+      avatarFaceUrl: input.avatarFaceUrl,
+      avatarVideoUrl: input.avatarVideoUrl,
+      avatarIsVideo: input.avatarIsVideo || false,
+      avatarPosition: input.avatarPosition || 'bottom-right',
+      avatarShape: input.avatarShape || 'circle',
+      avatarSize: input.avatarSize || 'medium',
     }
 
     // Select composition with props

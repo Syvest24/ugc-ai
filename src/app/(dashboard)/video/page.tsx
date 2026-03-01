@@ -10,6 +10,7 @@ import {
   Sparkles,
   Zap,
   ArrowLeft,
+  User,
 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -60,6 +61,15 @@ export default function VideoPage() {
   const [sceneImages, setSceneImages] = useState<(string | null)[]>([])
   const [scenesLoading, setScenesLoading] = useState(false)
   const [sceneProvider, setSceneProvider] = useState<'pollinations' | 'gemini'>('pollinations')
+
+  // Avatar / Talking Head
+  const [avatarFaceUrl, setAvatarFaceUrl] = useState<string | null>(null)
+  const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null)
+  const [avatarIsVideo, setAvatarIsVideo] = useState(false)
+  const [avatarPosition, setAvatarPosition] = useState<'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'>('bottom-right')
+  const [avatarShape, setAvatarShape] = useState<'circle' | 'rounded' | 'rectangle'>('circle')
+  const [avatarSize, setAvatarSize] = useState<'small' | 'medium' | 'large'>('medium')
+  const [avatarLoading, setAvatarLoading] = useState(false)
 
   // Video settings
   const [selectedTemplate, setSelectedTemplate] = useState('CaptionStyle')
@@ -321,6 +331,74 @@ export default function VideoPage() {
     }
   }
 
+  const handleGenerateAvatarFace = async (presetId: string) => {
+    setAvatarLoading(true)
+    try {
+      const res = await fetch('/api/video/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ presetId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Face generation failed')
+        return
+      }
+      setAvatarFaceUrl(data.data.faceImageUrl)
+      setAvatarIsVideo(false)
+      setAvatarVideoUrl(null)
+      toast.success(`Generated ${data.data.preset} face!`)
+    } catch {
+      toast.error('Failed to generate avatar face')
+    } finally {
+      setAvatarLoading(false)
+    }
+  }
+
+  const handleCreateTalkingHead = async () => {
+    if (!avatarFaceUrl) {
+      toast.error('Select or generate an avatar face first')
+      return
+    }
+    if (!ttsResult?.audioUrl) {
+      toast.error('Generate voiceover first (Step 2)')
+      return
+    }
+
+    setAvatarLoading(true)
+    toast.loading('Creating talking head avatar...', { id: 'avatar' })
+
+    try {
+      const res = await fetch('/api/video/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          faceImageUrl: avatarFaceUrl,
+          audioUrl: ttsResult.audioUrl,
+          durationMs: ttsResult.duration,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Avatar creation failed', { id: 'avatar' })
+        return
+      }
+      if (data.data.isVideo) {
+        setAvatarVideoUrl(data.data.videoUrl)
+        setAvatarIsVideo(true)
+        toast.success('Talking head avatar created!', { id: 'avatar' })
+      } else {
+        // Static mode — face will be animated by Remotion
+        setAvatarIsVideo(false)
+        toast.success('Avatar ready (static overlay with lip-sync)', { id: 'avatar' })
+      }
+    } catch {
+      toast.error('Failed to create talking head', { id: 'avatar' })
+    } finally {
+      setAvatarLoading(false)
+    }
+  }
+
   const handleRenderVideo = async () => {
     if (!scriptText.trim() || !hookText.trim()) {
       toast.error('Script text and hook are required')
@@ -357,6 +435,15 @@ export default function VideoPage() {
           hookStyle,
           colorAccent,
           contentId: contentId || undefined,
+          // Avatar
+          ...(avatarFaceUrl ? {
+            avatarFaceUrl,
+            avatarVideoUrl: avatarVideoUrl || undefined,
+            avatarIsVideo,
+            avatarPosition,
+            avatarShape,
+            avatarSize,
+          } : {}),
           // Export options
           format: exportFormat,
           quality: exportQuality,
@@ -655,9 +742,152 @@ export default function VideoPage() {
           </div>
         </div>
 
-        {/* Step 4: Video Style */}
+        {/* Step 4: Avatar / Presenter */}
         <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
-          {sectionHeader('Video Style', 4, <Sparkles className="w-4 h-4 text-violet-400" />)}
+          {sectionHeader('Avatar', 4, <User className="w-4 h-4 text-violet-400" />)}
+
+          <div className="space-y-4">
+            <p className="text-sm text-gray-400">
+              Add a UGC creator avatar overlay to make your video look professional and authentic.
+            </p>
+
+            {/* Avatar preset selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Generate AI Avatar Face</label>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {[
+                  { id: 'ai-woman-1', emoji: '👩', label: 'Pro Woman' },
+                  { id: 'ai-woman-2', emoji: '👩‍🦰', label: 'Casual Woman' },
+                  { id: 'ai-man-1', emoji: '👨', label: 'Pro Man' },
+                  { id: 'ai-man-2', emoji: '👨‍🦱', label: 'Casual Man' },
+                  { id: 'ai-diverse-1', emoji: '🧑', label: 'Lifestyle' },
+                  { id: 'ai-diverse-2', emoji: '🧑‍💻', label: 'Tech' },
+                ].map(preset => (
+                  <button
+                    key={preset.id}
+                    onClick={() => handleGenerateAvatarFace(preset.id)}
+                    disabled={avatarLoading}
+                    className="flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-700 bg-gray-800/30 hover:border-violet-500/50 hover:bg-violet-600/10 disabled:opacity-50 transition-all text-center"
+                  >
+                    <span className="text-2xl">{preset.emoji}</span>
+                    <span className="text-[10px] text-gray-400">{preset.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom image URL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Or paste face image URL</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com/face.jpg"
+                  value={avatarFaceUrl || ''}
+                  onChange={e => {
+                    setAvatarFaceUrl(e.target.value || null)
+                    setAvatarIsVideo(false)
+                    setAvatarVideoUrl(null)
+                  }}
+                  className="flex-1 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                />
+                {avatarFaceUrl && (
+                  <button
+                    onClick={() => { setAvatarFaceUrl(null); setAvatarVideoUrl(null); setAvatarIsVideo(false) }}
+                    className="px-3 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-red-400 hover:border-red-500/50 text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Avatar preview + talking head generation */}
+            {avatarFaceUrl && (
+              <div className="flex items-start gap-4 bg-gray-800/40 rounded-lg p-4 border border-gray-700/50">
+                <div className="shrink-0">
+                  <img
+                    src={avatarFaceUrl}
+                    alt="Avatar face"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-violet-500/50"
+                    onError={e => { (e.target as HTMLImageElement).src = '' }}
+                  />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <p className="text-sm text-white font-medium">Avatar Ready</p>
+                    <p className="text-xs text-gray-400">
+                      {avatarIsVideo ? 'Talking head video generated' : 'Static overlay — will animate with lip-sync in Remotion'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCreateTalkingHead}
+                    disabled={avatarLoading || !ttsResult}
+                    className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all"
+                    title={!ttsResult ? 'Generate voiceover first (Step 2)' : 'Create AI talking head'}
+                  >
+                    {avatarLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Video className="w-3 h-3" />}
+                    {avatarLoading ? 'Creating...' : 'Create Talking Head (D-ID / SadTalker)'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Avatar position, shape, size */}
+            {avatarFaceUrl && (
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Position</label>
+                  <select
+                    value={avatarPosition}
+                    onChange={e => setAvatarPosition(e.target.value as typeof avatarPosition)}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-2 py-1.5 text-xs text-gray-200 focus:border-violet-500 focus:outline-none"
+                  >
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-center">Bottom Center</option>
+                    <option value="top-right">Top Right</option>
+                    <option value="top-left">Top Left</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Shape</label>
+                  <select
+                    value={avatarShape}
+                    onChange={e => setAvatarShape(e.target.value as typeof avatarShape)}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-2 py-1.5 text-xs text-gray-200 focus:border-violet-500 focus:outline-none"
+                  >
+                    <option value="circle">Circle</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="rectangle">Rectangle</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Size</label>
+                  <select
+                    value={avatarSize}
+                    onChange={e => setAvatarSize(e.target.value as typeof avatarSize)}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-2 py-1.5 text-xs text-gray-200 focus:border-violet-500 focus:outline-none"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {!avatarFaceUrl && (
+              <p className="text-xs text-gray-500">
+                No avatar selected — video will render without a presenter overlay.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Step 5: Video Style */}
+        <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
+          {sectionHeader('Video Style', 5, <Sparkles className="w-4 h-4 text-violet-400" />)}
 
           <div className="space-y-4">
             <div>
@@ -752,7 +982,7 @@ export default function VideoPage() {
           />
         )}
 
-        {/* Step 5: Export & Render + Output */}
+        {/* Step 6: Export & Render + Output */}
         <ExportRenderSection
           exportFormat={exportFormat} setExportFormat={setExportFormat}
           exportAspectRatio={exportAspectRatio} setExportAspectRatio={setExportAspectRatio}

@@ -2,15 +2,21 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon } from 'lucide-react'
+import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon, Music, Palette, Wand2, Compass, Megaphone, Film } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/generate', label: 'Generate', icon: PenSquare },
+  { href: '/generate', label: 'Generate UGC', icon: PenSquare },
   { href: '/video', label: 'Create Video', icon: Video },
+  { href: '/text-to-video', label: 'Text to Video', icon: Film },
+  { href: '/video-to-video', label: 'Video to Video', icon: Palette },
   { href: '/images', label: 'AI Images', icon: ImageIcon },
+  { href: '/image-editor', label: 'Image Editor', icon: Wand2 },
+  { href: '/music', label: 'AI Music', icon: Music },
+  { href: '/ai-ads', label: 'AI Ads', icon: Megaphone },
+  { href: '/explore', label: 'Explore', icon: Compass },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/saved', label: 'Saved', icon: BookMarked },

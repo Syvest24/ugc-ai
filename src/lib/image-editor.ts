@@ -198,16 +198,16 @@ async function extendWithReplicate(options: ImageEditOptions): Promise<ImageEdit
 }
 
 async function enhanceWithPollinations(options: ImageEditOptions): Promise<ImageEditResult> {
-  // Use Pollinations for basic image manipulation by re-generating with the source as reference
   const prompt = options.prompt || 'enhance this image, high quality, detailed, sharp'
   const encodedPrompt = encodeURIComponent(prompt)
-  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true`
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
 
-  return {
-    imageUrl,
-    provider: 'pollinations',
-    model: 'flux',
-    operation: options.operation,
+  try {
+    const servePath = await downloadAndSave(imageUrl, 'enhanced')
+    return { imageUrl: servePath, provider: 'pollinations', model: 'flux', operation: options.operation }
+  } catch {
+    // Return raw URL as last resort
+    return { imageUrl, provider: 'pollinations', model: 'flux', operation: options.operation }
   }
 }
 
@@ -216,26 +216,25 @@ async function restyleWithPollinations(options: ImageEditOptions): Promise<Image
   const stylePrompt = styleInfo?.prompt || options.prompt || 'enhanced artistic version'
   const fullPrompt = `${stylePrompt}, based on reference image, high quality`
   const encodedPrompt = encodeURIComponent(fullPrompt)
-  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true`
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
 
-  return {
-    imageUrl,
-    provider: 'pollinations',
-    model: 'flux',
-    operation: options.operation,
+  try {
+    const servePath = await downloadAndSave(imageUrl, 'restyled')
+    return { imageUrl: servePath, provider: 'pollinations', model: 'flux', operation: options.operation }
+  } catch {
+    return { imageUrl, provider: 'pollinations', model: 'flux', operation: options.operation }
   }
 }
 
 async function removeBgFallback(options: ImageEditOptions): Promise<ImageEditResult> {
-  // Without Replicate, can't do real bg removal — return a message
   const prompt = encodeURIComponent('isolated subject on transparent white background, product photography')
-  const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&model=flux&nologo=true`
+  const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
 
-  return {
-    imageUrl,
-    provider: 'pollinations',
-    model: 'flux-fallback',
-    operation: 'remove-bg',
+  try {
+    const servePath = await downloadAndSave(imageUrl, 'nobg')
+    return { imageUrl: servePath, provider: 'pollinations', model: 'flux-fallback', operation: 'remove-bg' }
+  } catch {
+    return { imageUrl, provider: 'pollinations', model: 'flux-fallback', operation: 'remove-bg' }
   }
 }
 

@@ -1,11 +1,8 @@
 /**
  * Video-to-Video Style Transfer
  *
- * Transform existing videos into new styles using AI.
- *
- * Providers:
- *  1. Replicate — style transfer models
- *  2. Local ffmpeg — basic filter effects (always available)
+ * Transform existing videos into new styles using ffmpeg filters.
+ * Supports both local file paths and remote URLs.
  */
 
 import { writeFile, mkdir } from 'fs/promises'
@@ -57,124 +54,46 @@ export const VIDEO_STYLES = [
  * Apply style transfer to a video
  */
 export async function transformVideo(options: VideoToVideoOptions): Promise<VideoToVideoResult> {
-  const provider = options.provider || selectProvider()
-
   if (!existsSync(OUTPUT_DIR)) {
     await mkdir(OUTPUT_DIR, { recursive: true })
   }
 
-  switch (provider) {
-    case 'replicate':
-      return transformWithReplicate(options)
-    case 'local':
-      return transformWithFfmpeg(options)
-    default:
-      return transformWithFfmpeg(options)
-  }
-}
-
-function selectProvider(): VideoToVideoOptions['provider'] {
-  if (process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY) {
-    return 'replicate'
-  }
-  return 'local'
+  // Resolve source video to a local file path
+  const srcPath = await resolveSourceVideo(options.videoUrl)
+  return transformWithFfmpeg(srcPath, options)
 }
 
 /**
- * Style transfer via Replicate
+ * Ensure we have a local file path for the source video.
+ * Downloads remote URLs to temp directory.
  */
-async function transformWithReplicate(options: VideoToVideoOptions): Promise<VideoToVideoResult> {
-  const apiKey = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY || ''
-  if (!apiKey) throw new Error('REPLICATE_API_TOKEN not configured')
+async function resolveSourceVideo(input: string): Promise<string> {
+  // Already a local file path
+  if (existsSync(input)) return input
 
-  const styleInfo = VIDEO_STYLES.find(s => s.id === options.style)
-  const stylePrompt = options.prompt || styleInfo?.prompt || options.style
-
-  // Use video-to-video model
-  const createRes = await fetch('https://api.replicate.com/v1/models/wan-ai/wan2.1-i2v-480p/predictions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      input: {
-        image: options.videoUrl,
-        prompt: stylePrompt,
-        negative_prompt: 'blurry, low quality, distorted',
-        num_frames: 81,
-        guidance_scale: 5.0,
-        num_inference_steps: 30,
-      },
-    }),
-  })
-
-  if (!createRes.ok) {
-    const err = await createRes.text()
-    console.warn(`[video-to-video] Replicate error: ${err}`)
-    return transformWithFfmpeg(options)
-  }
-
-  const prediction = await createRes.json()
-  const maxWait = 300_000
-  const start = Date.now()
-  let result = prediction
-
-  while (Date.now() - start < maxWait) {
-    if (result.status === 'succeeded') break
-    if (result.status === 'failed' || result.status === 'canceled') {
-      throw new Error(`Style transfer failed: ${result.error || 'Unknown'}`)
+  // Remote URL — download it
+  if (input.startsWith('http://') || input.startsWith('https://')) {
+    if (!existsSync(OUTPUT_DIR)) {
+      await mkdir(OUTPUT_DIR, { recursive: true })
     }
-    await new Promise(r => setTimeout(r, 5000))
-    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    })
-    result = await pollRes.json()
-  }
-
-  if (result.status !== 'succeeded') {
-    return transformWithFfmpeg(options)
-  }
-
-  const outputUrl = typeof result.output === 'string' ? result.output : result.output?.[0]
-  if (!outputUrl) return transformWithFfmpeg(options)
-
-  const videoRes = await fetch(outputUrl)
-  const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
-  const filename = `v2v_${crypto.randomUUID().slice(0, 8)}.mp4`
-  const outputPath = path.join(OUTPUT_DIR, filename)
-  await writeFile(outputPath, videoBuffer)
-
-  const servePath = IS_SERVERLESS
-    ? `/api/generated/video-to-video/${filename}`
-    : `/generated/video-to-video/${filename}`
-
-  return {
-    videoUrl: servePath,
-    provider: 'replicate',
-    model: 'wan2.1-v2v',
-    style: options.style,
-  }
-}
-
-/**
- * Local ffmpeg style filters as fallback
- */
-async function transformWithFfmpeg(options: VideoToVideoOptions): Promise<VideoToVideoResult> {
-  const filename = `v2v_${crypto.randomUUID().slice(0, 8)}.mp4`
-  const outputPath = path.join(OUTPUT_DIR, filename)
-
-  // Download source video first
-  const srcFilename = `src_${crypto.randomUUID().slice(0, 8)}.mp4`
-  const srcPath = path.join(OUTPUT_DIR, srcFilename)
-
-  if (options.videoUrl.startsWith('http')) {
-    const res = await fetch(options.videoUrl)
+    const srcFilename = `src_${crypto.randomUUID().slice(0, 8)}.mp4`
+    const srcPath = path.join(OUTPUT_DIR, srcFilename)
+    const res = await fetch(input)
+    if (!res.ok) throw new Error(`Failed to download source video: ${res.status}`)
     const buf = Buffer.from(await res.arrayBuffer())
     await writeFile(srcPath, buf)
+    return srcPath
   }
 
-  const inputPath = options.videoUrl.startsWith('http') ? srcPath : options.videoUrl
+  throw new Error('Invalid video source. Provide a file upload or a valid URL.')
+}
+
+/**
+ * Apply ffmpeg filters for style transfer
+ */
+async function transformWithFfmpeg(srcPath: string, options: VideoToVideoOptions): Promise<VideoToVideoResult> {
+  const filename = `v2v_${crypto.randomUUID().slice(0, 8)}.mp4`
+  const outputPath = path.join(OUTPUT_DIR, filename)
 
   // Map style to ffmpeg filter
   const filterMap: Record<string, string> = {
@@ -192,18 +111,30 @@ async function transformWithFfmpeg(options: VideoToVideoOptions): Promise<VideoT
 
   const filter = filterMap[options.style] || filterMap['vintage']
 
+  // Verify ffmpeg exists
   try {
-    execSync(`ffmpeg -i "${inputPath}" -vf "${filter}" -c:a copy -y "${outputPath}"`, {
-      timeout: 60_000,
+    execSync('which ffmpeg', { stdio: 'pipe' })
+  } catch {
+    throw new Error('ffmpeg is not installed. Please install ffmpeg to use video style transfer.')
+  }
+
+  try {
+    execSync(`ffmpeg -y -i "${srcPath}" -vf "${filter}" -c:a copy "${outputPath}"`, {
+      timeout: 120_000,
       stdio: 'pipe',
     })
   } catch (err) {
-    console.error('[video-to-video] ffmpeg error:', err)
-    // Simplest fallback: just copy
-    execSync(`ffmpeg -i "${inputPath}" -c copy -y "${outputPath}"`, {
-      timeout: 30_000,
-      stdio: 'pipe',
-    })
+    console.error('[video-to-video] ffmpeg filter error, trying simple copy:', err)
+    // Fallback: just copy with basic re-encoding
+    try {
+      execSync(`ffmpeg -y -i "${srcPath}" -c:v libx264 -preset fast -c:a copy "${outputPath}"`, {
+        timeout: 60_000,
+        stdio: 'pipe',
+      })
+    } catch (err2) {
+      console.error('[video-to-video] ffmpeg copy also failed:', err2)
+      throw new Error('Failed to process video. The file may be corrupted or in an unsupported format.')
+    }
   }
 
   const servePath = IS_SERVERLESS
@@ -224,16 +155,10 @@ async function transformWithFfmpeg(options: VideoToVideoOptions): Promise<VideoT
 export function getVideoToVideoProviders() {
   return [
     {
-      id: 'replicate',
-      name: 'Replicate AI',
-      available: !!(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
-      description: 'AI-powered style transfer (best quality)',
-    },
-    {
       id: 'local',
-      name: 'Local (ffmpeg)',
+      name: 'Style Filters (ffmpeg)',
       available: true,
-      description: 'Quick filter effects using ffmpeg',
+      description: 'Quick style transfer effects using ffmpeg filters',
     },
   ]
 }

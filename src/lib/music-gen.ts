@@ -113,17 +113,6 @@ async function generateWithReplicate(options: MusicGenerateOptions): Promise<Mus
         normalization_strategy: 'peak',
       }),
     },
-    {
-      owner: 'facebookresearch',
-      name: 'musicgen',
-      label: 'MusicGen (FB)',
-      buildInput: () => ({
-        prompt: options.prompt,
-        duration,
-        model_version: 'stereo-large',
-        output_format: 'mp3',
-      }),
-    },
   ]
 
   for (const model of models) {
@@ -197,20 +186,71 @@ async function generateWithReplicate(options: MusicGenerateOptions): Promise<Mus
 }
 
 /**
- * Free fallback — generate a simple tone or return a placeholder
+ * Free fallback — try Pollinations audio API, otherwise generate silence with ffmpeg
  */
 async function generateFree(options: MusicGenerateOptions): Promise<MusicResult> {
-  // Use Pollinations audio API if available
-  const prompt = encodeURIComponent(options.prompt)
-  const audioUrl = `https://audio.pollinations.ai/prompt/${prompt}?model=musicgen&duration=${options.duration || 10}`
+  const duration = options.duration || 10
 
-  return {
-    audioUrl,
-    provider: 'pollinations',
-    model: 'pollinations-musicgen',
-    duration: options.duration || 10,
-    prompt: options.prompt,
+  // Try Pollinations audio API
+  try {
+    const prompt = encodeURIComponent(options.prompt)
+    const audioApiUrl = `https://audio.pollinations.ai/prompt/${prompt}?model=musicgen&duration=${duration}`
+    const res = await fetch(audioApiUrl, { signal: AbortSignal.timeout(120_000) })
+    if (res.ok) {
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('audio') || ct.includes('octet-stream') || ct.includes('mpeg')) {
+        const buf = Buffer.from(await res.arrayBuffer())
+        if (buf.length > 5_000) { // sanity check
+          const filename = `music_poll_${crypto.randomUUID().slice(0, 8)}.mp3`
+          const outputPath = path.join(OUTPUT_DIR, filename)
+          await writeFile(outputPath, buf)
+
+          const servePath = IS_SERVERLESS
+            ? `/api/generated/music/${filename}`
+            : `/generated/music/${filename}`
+
+          return {
+            audioUrl: servePath,
+            provider: 'pollinations',
+            model: 'pollinations-musicgen',
+            duration,
+            prompt: options.prompt,
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[music-gen] Pollinations audio failed:', err)
   }
+
+  // Last resort: generate a simple tone with ffmpeg
+  try {
+    const { execSync } = await import('child_process')
+    const filename = `music_tone_${crypto.randomUUID().slice(0, 8)}.mp3`
+    const outputPath = path.join(OUTPUT_DIR, filename)
+
+    // Generate a pleasant ambient tone
+    execSync(
+      `ffmpeg -y -f lavfi -i "sine=frequency=220:duration=${duration}" -f lavfi -i "sine=frequency=330:duration=${duration}" -filter_complex "[0][1]amix=inputs=2:duration=longest,volume=0.3" -t ${duration} "${outputPath}"`,
+      { timeout: 30_000, stdio: 'pipe' }
+    )
+
+    const servePath = IS_SERVERLESS
+      ? `/api/generated/music/${filename}`
+      : `/generated/music/${filename}`
+
+    return {
+      audioUrl: servePath,
+      provider: 'local',
+      model: 'ffmpeg-tone',
+      duration,
+      prompt: options.prompt,
+    }
+  } catch (err) {
+    console.warn('[music-gen] ffmpeg tone fallback failed:', err)
+  }
+
+  throw new Error('Music generation failed. Please try again or configure a Replicate API key.')
 }
 
 /**

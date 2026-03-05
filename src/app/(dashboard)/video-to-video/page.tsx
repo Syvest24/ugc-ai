@@ -16,6 +16,7 @@ const STYLES = [
 ]
 
 export default function VideoToVideoPage() {
+  const [videoFile, setVideoFile] = useState<File | null>(null)
   const [videoUrl, setVideoUrl] = useState('')
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
   const [style, setStyle] = useState('anime')
@@ -26,33 +27,39 @@ export default function VideoToVideoPage() {
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Create a local preview
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File too large. Max 50MB.')
+      return
+    }
     const url = URL.createObjectURL(file)
     setVideoPreview(url)
-
-    // Upload to temporary storage (base64 for now)
-    const reader = new FileReader()
-    reader.onload = () => {
-      setVideoUrl(reader.result as string)
-    }
-    reader.readAsDataURL(file)
+    setVideoFile(file)
+    setVideoUrl('')
   }
 
   const handleTransform = async () => {
-    if (!videoUrl) return
+    if (!videoFile && !videoUrl) return
     setLoading(true)
     setError(null)
     setResult(null)
 
     try {
+      const formData = new FormData()
+      if (videoFile) {
+        formData.append('file', videoFile)
+      } else {
+        formData.append('videoUrl', videoUrl)
+      }
+      formData.append('style', style)
+      if (prompt) formData.append('prompt', prompt)
+      formData.append('strength', String(strength))
+
       const res = await fetch('/api/video-to-video', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl, style, prompt, strength }),
+        body: formData,
       })
       const json = await res.json()
       if (!json.success) throw new Error(json.error || 'Transform failed')
@@ -89,7 +96,7 @@ export default function VideoToVideoPage() {
                   <video src={videoPreview} controls className="w-full h-full object-contain" />
                 </div>
                 <button
-                  onClick={() => { setVideoPreview(null); setVideoUrl('') }}
+                  onClick={() => { setVideoPreview(null); setVideoUrl(''); setVideoFile(null) }}
                   className="text-sm text-red-400 hover:text-red-300"
                 >
                   Remove video
@@ -111,10 +118,11 @@ export default function VideoToVideoPage() {
 
                 <input
                   type="url"
-                  value={videoUrl && !videoUrl.startsWith('data:') ? videoUrl : ''}
+                  value={videoUrl}
                   onChange={e => {
                     setVideoUrl(e.target.value)
-                    setVideoPreview(e.target.value)
+                    setVideoFile(null)
+                    setVideoPreview(e.target.value || null)
                   }}
                   placeholder="Paste video URL..."
                   className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-violet-500 focus:outline-none"
@@ -172,7 +180,7 @@ export default function VideoToVideoPage() {
 
           <button
             onClick={handleTransform}
-            disabled={loading || !videoUrl}
+            disabled={loading || (!videoFile && !videoUrl)}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 disabled:opacity-50 text-white px-6 py-4 rounded-xl font-semibold transition-all text-lg"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Palette className="w-5 h-5" />}

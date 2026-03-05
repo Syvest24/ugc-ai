@@ -4,9 +4,17 @@ import { rateLimit } from '@/lib/rate-limit'
 import { transformVideo, getVideoToVideoProviders, VIDEO_STYLES } from '@/lib/video-to-video'
 import { apiSuccess, unauthorized, rateLimited, badRequest, serverError } from '@/lib/api-response'
 import { logger } from '@/lib/logger'
+import { writeFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
+import path from 'path'
+import crypto from 'crypto'
+
+const UPLOAD_DIR = process.env.RAILWAY_ENVIRONMENT
+  ? '/tmp/generated/video-to-video'
+  : path.join(process.cwd(), 'public', 'generated', 'video-to-video')
 
 /**
- * POST /api/video-to-video — Apply style transfer to video
+ * POST /api/video-to-video — Apply style transfer to video (FormData)
  * GET  /api/video-to-video — List styles and providers
  */
 
@@ -23,24 +31,59 @@ export async function POST(req: NextRequest) {
       return rateLimited()
     }
 
-    const body = await req.json()
-    const { videoUrl, style, prompt, strength, provider } = body
+    // Accept FormData (file upload) or JSON (URL only)
+    const contentType = req.headers.get('content-type') || ''
+    let videoPath: string
+    let style: string
+    let prompt: string | undefined
+    let strength: number
 
-    if (!videoUrl || typeof videoUrl !== 'string') {
-      done(400)
-      return badRequest('Video URL is required')
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData()
+      const file = formData.get('file') as File | null
+      const videoUrl = formData.get('videoUrl') as string | null
+      style = (formData.get('style') as string) || 'anime'
+      prompt = (formData.get('prompt') as string) || undefined
+      strength = Number(formData.get('strength') || '0.7')
+
+      if (file && file.size > 0) {
+        // Save uploaded file to temp dir
+        if (!existsSync(UPLOAD_DIR)) {
+          await mkdir(UPLOAD_DIR, { recursive: true })
+        }
+        const ext = path.extname(file.name) || '.mp4'
+        const filename = `upload_${crypto.randomUUID().slice(0, 8)}${ext}`
+        videoPath = path.join(UPLOAD_DIR, filename)
+        const buffer = Buffer.from(await file.arrayBuffer())
+        await writeFile(videoPath, buffer)
+      } else if (videoUrl) {
+        videoPath = videoUrl
+      } else {
+        done(400)
+        return badRequest('Upload a video file or provide a URL')
+      }
+    } else {
+      const body = await req.json()
+      if (!body.videoUrl || typeof body.videoUrl !== 'string') {
+        done(400)
+        return badRequest('Video URL is required')
+      }
+      videoPath = body.videoUrl
+      style = body.style || 'anime'
+      prompt = body.prompt
+      strength = body.strength || 0.7
     }
+
     if (!style || typeof style !== 'string') {
       done(400)
       return badRequest('Style is required')
     }
 
     const result = await transformVideo({
-      videoUrl,
+      videoUrl: videoPath,
       style,
       prompt,
-      strength: strength || 0.7,
-      provider,
+      strength,
     })
 
     done(200)

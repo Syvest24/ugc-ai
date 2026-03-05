@@ -187,85 +187,51 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
 /**
  * Generate video via Pollinations (free fallback)
  *
- * Pollinations video API may be unreliable, so we try the video endpoint first,
- * then fall back to generating a still image and converting it to a short
- * video clip with ffmpeg (with a subtle Ken Burns pan/zoom).
+ * Generates a still image from Pollinations and converts it to a short
+ * video clip with ffmpeg (Ken Burns pan/zoom effect).
  */
 async function generateWithPollinations(options: TextToVideoOptions): Promise<TextToVideoResult> {
   const prompt = encodeURIComponent(options.prompt)
+  const duration = options.duration || 5
 
-  // Try Pollinations video endpoint first
+  // Generate a still image and animate it with ffmpeg
+  const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
+
   try {
-    const videoApiUrl = `https://video.pollinations.ai/prompt/${prompt}?model=fast-svd&width=512&height=512&seed=${Date.now()}`
-    const checkRes = await fetch(videoApiUrl, { method: 'HEAD', signal: AbortSignal.timeout(10_000) })
-    if (checkRes.ok) {
-      // Try to actually download the video
-      const videoRes = await fetch(videoApiUrl, { signal: AbortSignal.timeout(120_000) })
-      if (videoRes.ok) {
-        const ct = videoRes.headers.get('content-type') || ''
-        if (ct.includes('video') || ct.includes('octet-stream')) {
-          const buf = Buffer.from(await videoRes.arrayBuffer())
-          if (buf.length > 10_000) { // Sanity check: at least 10KB
-            const filename = `t2v_poll_${crypto.randomUUID().slice(0, 8)}.mp4`
-            const outputPath = path.join(OUTPUT_DIR, filename)
-            await writeFile(outputPath, buf)
+    const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(60_000) })
+    if (!imgRes.ok) throw new Error(`Pollinations image failed: ${imgRes.status}`)
 
-            const servePath = IS_SERVERLESS
-              ? `/api/generated/text-to-video/${filename}`
-              : `/generated/text-to-video/${filename}`
+    const imgBuf = Buffer.from(await imgRes.arrayBuffer())
+    if (imgBuf.length < 5_000) throw new Error('Image too small — likely an error page')
 
-            return {
-              videoUrl: servePath,
-              provider: 'pollinations',
-              model: 'pollinations-video',
-              duration: options.duration || 4,
-              prompt: options.prompt,
-            }
-          }
-        }
-      }
+    const imgFile = path.join(OUTPUT_DIR, `still_${crypto.randomUUID().slice(0, 8)}.jpg`)
+    await writeFile(imgFile, imgBuf)
+
+    const filename = `t2v_img_${crypto.randomUUID().slice(0, 8)}.mp4`
+    const outputPath = path.join(OUTPUT_DIR, filename)
+
+    // Create a Ken Burns effect (slow zoom) from the still image
+    const { execSync } = await import('child_process')
+    execSync(
+      `ffmpeg -y -loop 1 -i "${imgFile}" -vf "zoompan=z='min(zoom+0.0015,1.3)':d=${duration * 25}:s=1024x576,format=yuv420p" -t ${duration} -c:v libx264 -preset fast -pix_fmt yuv420p "${outputPath}"`,
+      { timeout: 120_000, stdio: 'pipe' }
+    )
+
+    const servePath = IS_SERVERLESS
+      ? `/api/generated/text-to-video/${filename}`
+      : `/generated/text-to-video/${filename}`
+
+    return {
+      videoUrl: servePath,
+      provider: 'pollinations',
+      model: 'image-to-video (ffmpeg)',
+      duration,
+      prompt: options.prompt,
     }
   } catch (err) {
-    console.warn('[text-to-video] Pollinations video endpoint failed:', err)
+    console.error('[text-to-video] Pollinations fallback failed:', err)
+    throw new Error('All video generation providers failed. Please try again or check your API keys.')
   }
-
-  // Fallback: generate a still image and animate it with ffmpeg
-  try {
-    const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
-    const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(30_000) })
-    if (imgRes.ok) {
-      const imgBuf = Buffer.from(await imgRes.arrayBuffer())
-      const imgFile = path.join(OUTPUT_DIR, `still_${crypto.randomUUID().slice(0, 8)}.jpg`)
-      await writeFile(imgFile, imgBuf)
-
-      const duration = options.duration || 5
-      const filename = `t2v_img_${crypto.randomUUID().slice(0, 8)}.mp4`
-      const outputPath = path.join(OUTPUT_DIR, filename)
-
-      // Create a Ken Burns effect (slow zoom) from the still image
-      const { execSync } = await import('child_process')
-      execSync(
-        `ffmpeg -y -loop 1 -i "${imgFile}" -vf "zoompan=z='min(zoom+0.0015,1.3)':d=${duration * 25}:s=1024x576,format=yuv420p" -t ${duration} -c:v libx264 -preset fast -pix_fmt yuv420p "${outputPath}"`,
-        { timeout: 60_000, stdio: 'pipe' }
-      )
-
-      const servePath = IS_SERVERLESS
-        ? `/api/generated/text-to-video/${filename}`
-        : `/generated/text-to-video/${filename}`
-
-      return {
-        videoUrl: servePath,
-        provider: 'pollinations',
-        model: 'image-to-video (ffmpeg)',
-        duration,
-        prompt: options.prompt,
-      }
-    }
-  } catch (err) {
-    console.warn('[text-to-video] Image fallback failed:', err)
-  }
-
-  throw new Error('All video generation providers failed. Please try again or check your API keys.')
 }
 
 /**

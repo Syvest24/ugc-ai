@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon, Music, Palette, Wand2, Compass, Megaphone, Film } from 'lucide-react'
+import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon, Palette, Wand2, Compass, Megaphone, Film } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 
@@ -14,7 +14,6 @@ const navItems = [
   { href: '/video-to-video', label: 'Video to Video', icon: Palette },
   { href: '/images', label: 'AI Images', icon: ImageIcon },
   { href: '/image-editor', label: 'Image Editor', icon: Wand2 },
-  { href: '/music', label: 'AI Music', icon: Music },
   { href: '/ai-ads', label: 'AI Ads', icon: Megaphone },
   { href: '/explore', label: 'Explore', icon: Compass },
   { href: '/calendar', label: 'Calendar', icon: Calendar },

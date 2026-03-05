@@ -183,7 +183,7 @@ export default function ImageEditorPage() {
             </div>
           )}
 
-          {(operation === 'inpaint' || operation === 'extend') && (
+          {(operation === 'extend') && (
             <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">Prompt</label>
               <input

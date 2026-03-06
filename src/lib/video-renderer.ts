@@ -95,7 +95,9 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
   const scaledHeight = Math.round(dimensions.height * qualityPreset.scale)
 
   const fps = format === 'gif' ? 15 : 30
-  const durationMs = input.durationMs || 30000 // default 30 seconds
+  // Minimum duration: 3s hook + 4s CTA + 2s per script line, at least 10s
+  const minDurationMs = Math.max(10000, (3 + 4 + (input.scriptLines?.length ?? 1) * 2) * 1000)
+  const durationMs = Math.max(input.durationMs || 30000, minDurationMs)
   // For GIF, cap at 10 seconds to keep file size reasonable
   const effectiveDurationMs = format === 'gif' ? Math.min(durationMs, 10000) : durationMs
   const durationInFrames = Math.ceil((effectiveDurationMs / 1000) * fps)

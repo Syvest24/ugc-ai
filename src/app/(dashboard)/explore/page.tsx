@@ -25,7 +25,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-1',
     type: 'image',
     title: 'Sunset Mountain Landscape',
-    content: 'https://image.pollinations.ai/prompt/breathtaking%20sunset%20over%20mountain%20range%20photorealistic?width=512&height=512&model=flux&nologo=true&seed=1001',
+    content: 'https://picsum.photos/seed/mountain/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -33,7 +33,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-2',
     type: 'image',
     title: 'Cyberpunk City',
-    content: 'https://image.pollinations.ai/prompt/cyberpunk%20city%20at%20night%20neon%20lights%20rain?width=512&height=512&model=flux&nologo=true&seed=1002',
+    content: 'https://picsum.photos/seed/city/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -41,7 +41,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-3',
     type: 'image',
     title: 'Fantasy Forest',
-    content: 'https://image.pollinations.ai/prompt/magical%20enchanted%20forest%20with%20glowing%20mushrooms%20and%20fairy%20lights?width=512&height=512&model=flux&nologo=true&seed=1003',
+    content: 'https://picsum.photos/seed/forest/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -49,7 +49,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-4',
     type: 'image',
     title: 'Abstract Art',
-    content: 'https://image.pollinations.ai/prompt/abstract%20digital%20art%20colorful%20fluid%20shapes%20modern?width=512&height=512&model=flux&nologo=true&seed=1004',
+    content: 'https://picsum.photos/seed/abstract/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -57,7 +57,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-5',
     type: 'image',
     title: 'Underwater World',
-    content: 'https://image.pollinations.ai/prompt/beautiful%20underwater%20coral%20reef%20tropical%20fish%20sunlight?width=512&height=512&model=flux&nologo=true&seed=1005',
+    content: 'https://picsum.photos/seed/ocean/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -65,7 +65,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-6',
     type: 'image',
     title: 'Space Nebula',
-    content: 'https://image.pollinations.ai/prompt/vast%20space%20nebula%20colorful%20gas%20clouds%20stars%20cosmic?width=512&height=512&model=flux&nologo=true&seed=1006',
+    content: 'https://picsum.photos/seed/space/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -73,7 +73,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-7',
     type: 'image',
     title: 'Japanese Garden',
-    content: 'https://image.pollinations.ai/prompt/peaceful%20Japanese%20garden%20cherry%20blossom%20koi%20pond?width=512&height=512&model=flux&nologo=true&seed=1007',
+    content: 'https://picsum.photos/seed/garden/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -81,7 +81,7 @@ const DEMO_ITEMS: ContentItem[] = [
     id: 'demo-8',
     type: 'image',
     title: 'Steampunk Machine',
-    content: 'https://image.pollinations.ai/prompt/intricate%20steampunk%20machine%20brass%20gears%20copper%20pipes?width=512&height=512&model=flux&nologo=true&seed=1008',
+    content: 'https://picsum.photos/seed/tech/512/512',
     createdAt: new Date().toISOString(),
     user: { name: 'AI Gallery' },
   },
@@ -141,7 +141,9 @@ export default function ExplorePage() {
     if (item.type === 'image' && item.content?.startsWith('http')) {
       return item.content
     }
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(item.title || 'creative content')}?width=400&height=400&model=flux&nologo=true&seed=${item.id.charCodeAt(0)}`
+    // Use picsum.photos as a reliable seeded placeholder
+    const seed = item.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) || 'ugcforge'
+    return `https://picsum.photos/seed/${seed}/400/400`
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))

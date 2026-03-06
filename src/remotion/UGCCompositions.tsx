@@ -72,12 +72,15 @@ function getSceneTiming(
   hookDurationSec: number = 3,
   ctaDurationSec: number = 4
 ) {
-  const hookFrames = Math.floor(fps * hookDurationSec)
-  const ctaFrames = Math.floor(fps * ctaDurationSec)
-  const contentFrames = durationInFrames - hookFrames - ctaFrames
+  // Clamp hook/cta so they never exceed total duration
+  const maxHookFrames = Math.floor(durationInFrames * 0.35)
+  const maxCtaFrames = Math.floor(durationInFrames * 0.25)
+  const hookFrames = Math.min(Math.floor(fps * hookDurationSec), maxHookFrames)
+  const ctaFrames = Math.min(Math.floor(fps * ctaDurationSec), maxCtaFrames)
+  const contentFrames = Math.max(scriptLines.length, durationInFrames - hookFrames - ctaFrames)
   const framesPerLine = scriptLines.length > 0
-    ? Math.floor(contentFrames / scriptLines.length)
-    : contentFrames
+    ? Math.max(1, Math.floor(contentFrames / scriptLines.length))
+    : Math.max(1, contentFrames)
 
   return {
     hookFrames,

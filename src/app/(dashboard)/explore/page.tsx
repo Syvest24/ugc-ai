@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { Loader2, Video, ImageIcon, Music, FileText, Search, Compass } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Loader2, Video, ImageIcon, FileText, Search, Compass, User, Globe, ChevronLeft, ChevronRight } from 'lucide-react'
 
 type ContentItem = {
   id: string
@@ -18,7 +18,8 @@ const TABS = [
   { id: 'script', name: 'Scripts', icon: FileText },
 ]
 
-// Demo content for gallery when no items exist yet
+const PAGE_SIZE = 20
+
 const DEMO_ITEMS: ContentItem[] = [
   {
     id: 'demo-1',
@@ -88,31 +89,47 @@ const DEMO_ITEMS: ContentItem[] = [
 
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState('all')
+  const [scope, setScope] = useState<'my' | 'community'>('my')
   const [items, setItems] = useState<ContentItem[]>(DEMO_ITEMS)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [total, setTotal] = useState(0)
 
-  useEffect(() => {
-    fetchItems()
-  }, [activeTab])
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async (currentPage = 1) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/explore?type=${activeTab}&limit=30`)
+      const res = await fetch(`/api/explore?type=${activeTab}&scope=${scope}&limit=${PAGE_SIZE}&page=${currentPage}`)
       const json = await res.json()
       if (json.success && json.data.length > 0) {
         setItems(json.data)
+        setTotal(json.meta?.total ?? json.data.length)
+        setHasMore(json.data.length === PAGE_SIZE)
       } else {
-        // Keep demo items if no API content
         setItems(DEMO_ITEMS)
+        setTotal(0)
+        setHasMore(false)
       }
     } catch {
       setItems(DEMO_ITEMS)
+      setTotal(0)
+      setHasMore(false)
     } finally {
       setLoading(false)
     }
+  }, [activeTab, scope])
+
+  useEffect(() => {
+    setPage(1)
+    fetchItems(1)
+  }, [activeTab, scope, fetchItems])
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+    fetchItems(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const filteredItems = items.filter(item => {
@@ -124,9 +141,10 @@ export default function ExplorePage() {
     if (item.type === 'image' && item.content?.startsWith('http')) {
       return item.content
     }
-    // Generate a preview image for non-image items
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(item.title || 'creative content')}?width=400&height=400&model=flux&nologo=true&seed=${item.id.charCodeAt(0)}`
   }
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -139,7 +157,9 @@ export default function ExplorePage() {
             </div>
             Explore
           </h1>
-          <p className="text-gray-400 mt-1">Discover AI-generated content created by the community.</p>
+          <p className="text-gray-400 mt-1">
+            {scope === 'my' ? 'Your generated content.' : 'AI-generated content from the community.'}
+          </p>
         </div>
 
         {/* Search */}
@@ -155,25 +175,44 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {TABS.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? 'bg-violet-600/20 text-violet-300 border border-violet-600/30'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.name}
-            </button>
-          )
-        })}
+      {/* Scope + Type Tabs */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Scope toggle */}
+        <div className="flex rounded-lg border border-gray-700 overflow-hidden self-start">
+          <button
+            onClick={() => setScope('my')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-all ${scope === 'my' ? 'bg-violet-600/20 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}
+          >
+            <User className="w-3.5 h-3.5" /> My Content
+          </button>
+          <button
+            onClick={() => setScope('community')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-all border-l border-gray-700 ${scope === 'community' ? 'bg-violet-600/20 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}
+          >
+            <Globe className="w-3.5 h-3.5" /> Community
+          </button>
+        </div>
+
+        {/* Type tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {TABS.map(tab => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-violet-600/20 text-violet-300 border border-violet-600/30'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.name}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Gallery Grid */}
@@ -218,7 +257,32 @@ export default function ExplorePage() {
       {filteredItems.length === 0 && !loading && (
         <div className="text-center py-20">
           <Compass className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-500">No content found. Be the first to create something!</p>
+          <p className="text-gray-500">
+            {scope === 'my' ? 'No content yet. Start generating to see your work here!' : 'No community content found yet.'}
+          </p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && total > PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1}
+            className="p-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm text-gray-400">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page >= totalPages || !hasMore}
+            className="p-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       )}
 

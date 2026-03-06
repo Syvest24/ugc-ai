@@ -211,11 +211,13 @@ async function generateWithPollinations(options: TextToVideoOptions): Promise<Te
     const outputPath = path.join(OUTPUT_DIR, filename)
 
     // Create a Ken Burns effect (slow zoom) from the still image
-    const { execSync } = await import('child_process')
-    execSync(
-      `ffmpeg -y -loop 1 -i "${imgFile}" -vf "zoompan=z='min(zoom+0.0015,1.3)':d=${duration * 25}:s=1024x576,format=yuv420p" -t ${duration} -c:v libx264 -preset fast -pix_fmt yuv420p "${outputPath}"`,
-      { timeout: 120_000, stdio: 'pipe' }
-    )
+    const { execFileSync } = await import('child_process')
+    execFileSync('ffmpeg', [
+      '-y', '-loop', '1', '-i', imgFile,
+      '-vf', `zoompan=z='min(zoom+0.0015,1.3)':d=${duration * 25}:s=1024x576,format=yuv420p`,
+      '-t', String(duration), '-c:v', 'libx264', '-preset', 'fast', '-pix_fmt', 'yuv420p',
+      outputPath,
+    ], { timeout: 120_000, stdio: 'pipe' })
 
     const servePath = IS_SERVERLESS
       ? `/api/generated/text-to-video/${filename}`

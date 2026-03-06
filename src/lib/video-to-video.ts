@@ -9,7 +9,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -113,13 +113,13 @@ async function transformWithFfmpeg(srcPath: string, options: VideoToVideoOptions
 
   // Verify ffmpeg exists
   try {
-    execSync('which ffmpeg', { stdio: 'pipe' })
+    execFileSync('which', ['ffmpeg'], { stdio: 'pipe' })
   } catch {
     throw new Error('ffmpeg is not installed. Please install ffmpeg to use video style transfer.')
   }
 
   try {
-    execSync(`ffmpeg -y -i "${srcPath}" -vf "${filter}" -c:a copy "${outputPath}"`, {
+    execFileSync('ffmpeg', ['-y', '-i', srcPath, '-vf', filter, '-c:a', 'copy', outputPath], {
       timeout: 120_000,
       stdio: 'pipe',
     })
@@ -127,7 +127,7 @@ async function transformWithFfmpeg(srcPath: string, options: VideoToVideoOptions
     console.error('[video-to-video] ffmpeg filter error, trying simple copy:', err)
     // Fallback: just copy with basic re-encoding
     try {
-      execSync(`ffmpeg -y -i "${srcPath}" -c:v libx264 -preset fast -c:a copy "${outputPath}"`, {
+      execFileSync('ffmpeg', ['-y', '-i', srcPath, '-c:v', 'libx264', '-preset', 'fast', '-c:a', 'copy', outputPath], {
         timeout: 60_000,
         stdio: 'pipe',
       })

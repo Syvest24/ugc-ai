@@ -5,11 +5,15 @@ interface GenerateContentOptions {
   systemPrompt?: string
   temperature?: number
   maxTokens?: number
+  /** Optional per-request provider override */
+  providerOverride?: LLMProvider
+  /** Optional per-request model override */
+  modelOverride?: string
 }
 
 export async function generateContent(options: GenerateContentOptions): Promise<string> {
-  const provider = (process.env.LLM_PROVIDER || 'openrouter') as LLMProvider
-  const model = process.env.LLM_MODEL || getDefaultModel(provider)
+  const provider = (options.providerOverride || process.env.LLM_PROVIDER || 'openrouter') as LLMProvider
+  const model = options.modelOverride || process.env.LLM_MODEL || getDefaultModel(provider)
   const apiKey = process.env.LLM_API_KEY || ''
 
   switch (provider) {
@@ -180,8 +184,8 @@ function getProviderStreamUrl(provider: LLMProvider): string {
 export async function* generateContentStream(
   options: GenerateContentOptions
 ): AsyncGenerator<string, void, undefined> {
-  const provider = (process.env.LLM_PROVIDER || 'openrouter') as LLMProvider
-  const model = process.env.LLM_MODEL || getDefaultModel(provider)
+  const provider = (options.providerOverride || process.env.LLM_PROVIDER || 'openrouter') as LLMProvider
+  const model = options.modelOverride || process.env.LLM_MODEL || getDefaultModel(provider)
   const apiKey = process.env.LLM_API_KEY || ''
 
   // HuggingFace doesn't support SSE-style streaming — fall back
@@ -246,4 +250,54 @@ export async function* generateContentStream(
       }
     }
   }
+}
+
+/**
+ * Returns a list of LLM providers with their availability status.
+ * A provider is "available" if its API key is configured in the environment.
+ */
+export function getAvailableProviders(): Array<{
+  id: LLMProvider
+  name: string
+  available: boolean
+  defaultModel: string
+  description: string
+}> {
+  return [
+    {
+      id: 'openrouter',
+      name: 'OpenRouter',
+      available: !!process.env.LLM_API_KEY || !!process.env.OPENROUTER_API_KEY,
+      defaultModel: 'nvidia/nemotron-nano-9b-v2:free',
+      description: 'Access 100+ models including free tiers',
+    },
+    {
+      id: 'groq',
+      name: 'Groq',
+      available: !!process.env.GROQ_API_KEY,
+      defaultModel: 'llama3-8b-8192',
+      description: 'Ultra-fast inference with Llama 3',
+    },
+    {
+      id: 'together',
+      name: 'Together.ai',
+      available: !!process.env.TOGETHER_API_KEY,
+      defaultModel: 'mistralai/Mistral-7B-Instruct-v0.2',
+      description: 'Open-source models, free tier available',
+    },
+    {
+      id: 'huggingface',
+      name: 'HuggingFace',
+      available: !!process.env.HUGGINGFACE_API_KEY,
+      defaultModel: 'mistralai/Mistral-7B-Instruct-v0.2',
+      description: 'Free inference API for open-source models',
+    },
+    {
+      id: 'mistral',
+      name: 'Mistral AI',
+      available: !!process.env.MISTRAL_API_KEY,
+      defaultModel: 'mistral-small-latest',
+      description: 'Mistral\'s native models',
+    },
+  ]
 }

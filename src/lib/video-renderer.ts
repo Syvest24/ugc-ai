@@ -48,6 +48,7 @@ export interface VideoRenderInput {
   avatarPosition?: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
   avatarShape?: 'circle' | 'rounded' | 'rectangle'
   avatarSize?: 'small' | 'medium' | 'large'
+  avatarLabel?: string
   // Export options
   aspectRatio?: '9:16' | '1:1' | '16:9' | '4:5'
   quality?: 'draft' | 'standard' | 'high'
@@ -75,7 +76,7 @@ function ensureDir(dir: string) {
   }
 }
 
-export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderOutput> {
+export async function renderVideo(input: VideoRenderInput, onProgress?: (progress: number) => void): Promise<VideoRenderOutput> {
   ensureDir(OUTPUT_DIR)
 
   // Determine dimensions: custom aspect ratio > platform default
@@ -163,6 +164,7 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
       avatarPosition: input.avatarPosition || 'bottom-right',
       avatarShape: input.avatarShape || 'circle',
       avatarSize: input.avatarSize || 'medium',
+      avatarLabel: input.avatarLabel,
     }
 
     // Select composition with props
@@ -203,6 +205,9 @@ export async function renderVideo(input: VideoRenderInput): Promise<VideoRenderO
       if (log.type === 'error') {
         console.error(`[Render] Browser error: ${log.text}`)
       }
+    }
+    renderOptions.onProgress = ({ progress }: { progress: number }) => {
+      onProgress?.(progress)
     }
 
     console.log(`[Render] Starting renderMedia for ${input.template}...`)

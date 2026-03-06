@@ -6,6 +6,7 @@
  */
 
 import { renderVideo, type VideoRenderInput, type VideoRenderOutput } from './video-renderer'
+import { setRenderProgress } from './render-progress'
 
 interface QueuedJob {
   id: string
@@ -78,6 +79,7 @@ class RenderQueue {
       }, RENDER_TIMEOUT_MS)
 
       this.queue.push(job)
+      setRenderProgress(userId, { jobId, stage: 'queued', progress: 0 })
       this.processNext()
     })
   }
@@ -110,13 +112,20 @@ class RenderQueue {
     const job = this.queue.shift()!
     this.active++
 
+    // Mark job as rendering in the progress store
+    setRenderProgress(job.userId, { jobId: job.id, stage: 'rendering', progress: 0 })
+
     try {
       console.log(`[RenderQueue] Starting job ${job.id} for user ${job.userId} (active: ${this.active}, waiting: ${this.queue.length})`)
-      const result = await renderVideo(job.input)
+      const result = await renderVideo(job.input, (progress) => {
+        setRenderProgress(job.userId, { jobId: job.id, stage: 'rendering', progress })
+      })
+      setRenderProgress(job.userId, { jobId: job.id, stage: 'completed', progress: 1 })
       this.totalProcessed++
       console.log(`[RenderQueue] Completed job ${job.id} in ${Date.now() - job.enqueuedAt}ms`)
       job.resolve(result)
     } catch (error) {
+      setRenderProgress(job.userId, { jobId: job.id, stage: 'failed', progress: 0 })
       this.totalFailed++
       console.error(`[RenderQueue] Failed job ${job.id}:`, error)
       job.reject(error instanceof Error ? error : new Error(String(error)))

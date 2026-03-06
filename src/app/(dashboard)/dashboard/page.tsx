@@ -3,6 +3,7 @@ import { ensureUser, getUserStats } from '@/lib/db'
 import Link from 'next/link'
 import { PenSquare, BookMarked, Zap, TrendingUp, ArrowRight, Sparkles, Video, Film, ImageIcon } from 'lucide-react'
 import type { Metadata } from 'next'
+import OnboardingModal from '@/components/OnboardingModal'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-8">
+      <OnboardingModal />
       {/* Welcome */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-1">Welcome back, {name} 👋</h1>

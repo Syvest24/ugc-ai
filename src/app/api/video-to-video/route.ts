@@ -47,6 +47,12 @@ export async function POST(req: NextRequest) {
       strength = Number(formData.get('strength') || '0.7')
 
       if (file && file.size > 0) {
+        // Reject files larger than 100MB
+        const MAX_UPLOAD_SIZE = 100 * 1024 * 1024
+        if (file.size > MAX_UPLOAD_SIZE) {
+          done(400)
+          return badRequest('File too large. Maximum upload size is 100MB.')
+        }
         // Save uploaded file to temp dir
         if (!existsSync(UPLOAD_DIR)) {
           await mkdir(UPLOAD_DIR, { recursive: true })

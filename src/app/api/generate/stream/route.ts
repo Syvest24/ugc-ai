@@ -20,6 +20,7 @@ const generateSchema = z.object({
   websiteUrl: z.string().optional(),
   pricePoint: z.string().optional(),
   objections: z.string().optional(),
+  llmProvider: z.enum(['openrouter', 'huggingface', 'together', 'groq', 'mistral']).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
             systemPrompt,
             temperature: 0.85,
             maxTokens: 3000,
+            providerOverride: parsed.data.llmProvider,
           })) {
             rawOutput += chunk
             send('text', chunk)

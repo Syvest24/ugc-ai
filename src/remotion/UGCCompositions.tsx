@@ -55,6 +55,8 @@ export interface UGCVideoProps {
   avatarPosition?: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
   avatarShape?: 'circle' | 'rounded' | 'rectangle'
   avatarSize?: 'small' | 'medium' | 'large'
+  /** Custom label shown under the avatar (e.g. brand name) */
+  avatarLabel?: string
 }
 
 /**
@@ -104,6 +106,7 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
   avatarPosition = 'bottom-right',
   avatarShape = 'circle',
   avatarSize = 'medium',
+  avatarLabel,
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
@@ -184,6 +187,7 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
           size={avatarSize}
           wordBoundaries={wordBoundaries}
           startFrame={0}
+          creatorLabel={avatarLabel}
         />
       )}
 
@@ -217,6 +221,7 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
   avatarPosition = 'bottom-right',
   avatarShape = 'circle',
   avatarSize = 'medium',
+  avatarLabel,
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
@@ -278,6 +283,7 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
           size={avatarSize}
           wordBoundaries={wordBoundaries}
           startFrame={0}
+          creatorLabel={avatarLabel}
         />
       )}
 

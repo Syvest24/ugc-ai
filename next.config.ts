@@ -38,7 +38,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https://images.pexels.com https://*.pexels.com https://image.pollinations.ai https://replicate.delivery https://*.replicate.delivery",
       "media-src 'self' blob: data:",
       "font-src 'self' data:",
-      "connect-src 'self' https://openrouter.ai https://api.groq.com https://api.together.xyz https://api-inference.huggingface.co https://api.mistral.ai https://api.pexels.com https://replicate.delivery https://*.replicate.delivery",
+      "connect-src 'self' https://openrouter.ai https://api.groq.com https://api.together.xyz https://api-inference.huggingface.co https://api.mistral.ai https://api.pexels.com https://api.replicate.com https://replicate.delivery https://*.replicate.delivery https://api.d-id.com https://api.stability.ai https://generativelanguage.googleapis.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",

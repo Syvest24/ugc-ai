@@ -6,6 +6,55 @@ import { rateLimit } from '@/lib/rate-limit'
 import { ensureUser, prisma } from '@/lib/db'
 import { apiSuccess, apiError, unauthorized, rateLimited, badRequest, serverError } from '@/lib/api-response'
 import { logger } from '@/lib/logger'
+import path from 'path'
+import fs from 'fs'
+import { execFileSync } from 'child_process'
+
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
+
+/**
+ * Resolve a serve-path like /api/generated/video/foo.mp4 to an absolute FS path.
+ */
+function servePathToFs(servePath: string): string {
+  if (servePath.startsWith('/api/generated/')) {
+    return path.join('/tmp', 'generated', servePath.replace('/api/generated/', ''))
+  }
+  return path.join(process.cwd(), 'public', servePath)
+}
+
+/**
+ * Extract a JPEG thumbnail at 1s from a video file. Returns the serve URL.
+ */
+async function extractThumbnail(videoServePath: string): Promise<string | undefined> {
+  try {
+    const videoFsPath = servePathToFs(videoServePath)
+    if (!fs.existsSync(videoFsPath)) return undefined
+
+    const thumbDir = IS_SERVERLESS
+      ? '/tmp/generated/thumbnails'
+      : path.join(process.cwd(), 'public', 'generated', 'thumbnails')
+
+    if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true })
+
+    const thumbFilename = `thumb_${Date.now()}.jpg`
+    const thumbFsPath = path.join(thumbDir, thumbFilename)
+
+    execFileSync('ffmpeg', [
+      '-y', '-i', videoFsPath,
+      '-ss', '00:00:01',
+      '-vframes', '1',
+      '-q:v', '2',
+      thumbFsPath,
+    ], { stdio: 'pipe', timeout: 15_000 })
+
+    return IS_SERVERLESS
+      ? `/api/generated/thumbnails/${thumbFilename}`
+      : `/generated/thumbnails/${thumbFilename}`
+  } catch (e) {
+    console.warn('[render] Thumbnail extraction failed:', e)
+    return undefined
+  }
+}
 
 export async function POST(req: NextRequest) {
   let done = (_status: number, _extra?: Record<string, unknown>) => {}
@@ -79,11 +128,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Generate thumbnail from rendered video
+    const thumbnailPath = result.format !== 'gif'
+      ? await extractThumbnail(result.videoPath)
+      : undefined
+
     // Update with result
     await prisma.video.update({
       where: { id: videoRecord.id },
       data: {
         videoPath: result.videoPath,
+        thumbnailPath: thumbnailPath ?? null,
         width: result.width,
         height: result.height,
         durationMs: result.durationMs,
@@ -96,6 +151,7 @@ export async function POST(req: NextRequest) {
       data: {
         videoId: videoRecord.id,
         videoPath: result.videoPath,
+        thumbnailPath: thumbnailPath ?? null,
         width: result.width,
         height: result.height,
         durationMs: result.durationMs,

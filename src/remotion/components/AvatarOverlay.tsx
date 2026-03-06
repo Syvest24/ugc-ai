@@ -40,6 +40,8 @@ export interface AvatarOverlayProps {
   startFrame?: number
   /** Frame to stop showing avatar */
   endFrame?: number
+  /** Label shown below the avatar frame (defaults to 'UGC Creator') */
+  creatorLabel?: string
 }
 
 const SIZE_MAP = {
@@ -72,6 +74,7 @@ export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
   wordBoundaries = [],
   startFrame = 0,
   endFrame,
+  creatorLabel = 'UGC Creator',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames } = useVideoConfig()
@@ -233,7 +236,7 @@ export const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
             backdropFilter: 'blur(4px)',
           }}
         >
-          UGC Creator
+          {creatorLabel}
         </div>
       </div>
     </AbsoluteFill>

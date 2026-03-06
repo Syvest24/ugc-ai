@@ -17,6 +17,11 @@ export async function GET(req: NextRequest) {
     const page = Number(req.nextUrl.searchParams.get('page') || '1')
     const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || '20'), 50)
     const type = req.nextUrl.searchParams.get('type') || 'all'
+    // scope=my (default) scopes to current user; scope=community shows all users
+    const scope = req.nextUrl.searchParams.get('scope') || 'my'
+
+    const currentUser = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+    const userFilter = scope === 'community' ? {} : { userId: currentUser?.id }
 
     const items: Array<{
       id: string
@@ -30,6 +35,7 @@ export async function GET(req: NextRequest) {
     // Fetch images
     if (type === 'all' || type === 'image') {
       const images = await prisma.generatedImage.findMany({
+        where: userFilter,
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: (page - 1) * limit,
@@ -54,7 +60,7 @@ export async function GET(req: NextRequest) {
     // Fetch videos
     if (type === 'all' || type === 'video') {
       const videos = await prisma.video.findMany({
-        where: { status: 'completed' },
+        where: { status: 'completed', ...userFilter },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: (page - 1) * limit,

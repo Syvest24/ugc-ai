@@ -43,9 +43,10 @@ export default function GeneratePage() {
   const [streamingText, setStreamingText] = useState('')
   const [quickVideoLoading, setQuickVideoLoading] = useState(false)
   const [variationsLoading, setVariationsLoading] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [variations, setVariations] = useState<any[] | null>(null)
+  const [variations, setVariations] = useState<Array<{ id: string | null; strategy: string; output: { hookBank: string[]; script: string; caption: string; hashtags: string[]; ctaVariations: string[]; thumbnailTexts: string[] } | null; success: boolean; error?: string }> | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState<string>('')
+  const [availableProviders, setAvailableProviders] = useState<Array<{ id: string; name: string; available: boolean; description: string }>>([])
   const router = useRouter()
   const { brandKit, fetchBrandKit } = useBrandKitStore()
 
@@ -70,6 +71,14 @@ export default function GeneratePage() {
     }
   }, [brandKit, setValue])
 
+  // Fetch available LLM providers
+  useEffect(() => {
+    fetch('/api/generate/providers')
+      .then(r => r.json())
+      .then(json => { if (json.success) setAvailableProviders(json.data) })
+      .catch(() => {})
+  }, [])
+
   const onSubmit = async (data: FormData) => {
     setLoading(true)
     setOutput(null)
@@ -81,7 +90,7 @@ export default function GeneratePage() {
       const res = await fetch('/api/generate/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, ...(selectedProvider ? { llmProvider: selectedProvider } : {}) }),
       })
 
       if (!res.ok) {
@@ -406,6 +415,24 @@ ${output.abVariants.join('\n\n')}
                 {label('Competitor Links')}
                 <input {...register('competitorLinks')} placeholder="https://competitor.com" className={inputClass} />
               </div>
+              {availableProviders.length > 0 && (
+                <div>
+                  {label('AI Model')}
+                  <select
+                    value={selectedProvider}
+                    onChange={e => setSelectedProvider(e.target.value)}
+                    className={selectClass}
+                  >
+                    <option value="">Default (from server config)</option>
+                    {availableProviders.map(p => (
+                      <option key={p.id} value={p.id} disabled={!p.available}>
+                        {p.name}{!p.available ? ' (not configured)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Override the AI provider for this generation.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

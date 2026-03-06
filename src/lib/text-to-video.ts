@@ -87,18 +87,6 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
 
   const models = [
     {
-      owner: 'wan-ai',
-      name: 'wan2.1-t2v-480p',
-      label: 'Wan 2.1 T2V',
-      buildInput: () => ({
-        prompt: options.prompt,
-        negative_prompt: options.negativePrompt || 'blurry, low quality, distorted, deformed',
-        num_frames: Math.min((options.duration || 5) * 24, 81),
-        guidance_scale: 5.0,
-        num_inference_steps: 30,
-      }),
-    },
-    {
       owner: 'minimax',
       name: 'video-01',
       label: 'MiniMax Video-01',
@@ -107,7 +95,24 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
         prompt_optimizer: true,
       }),
     },
+    {
+      owner: 'lightricks',
+      name: 'ltx-video',
+      label: 'LTX-Video',
+      buildInput: () => ({
+        prompt: options.prompt,
+        negative_prompt: options.negativePrompt || 'blurry, low quality, distorted, deformed',
+        num_frames: Math.min((options.duration || 5) * 25, 121),
+        frame_rate: 25,
+        guidance_scale: 3.0,
+        num_inference_steps: 40,
+        width: options.aspectRatio === '9:16' ? 576 : 1024,
+        height: options.aspectRatio === '9:16' ? 1024 : 576,
+      }),
+    },
   ]
+
+  const errors: string[] = []
 
   for (const model of models) {
     try {
@@ -122,7 +127,9 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
 
       if (!createRes.ok) {
         const err = await createRes.text()
-        console.warn(`[text-to-video] ${model.label} failed to create: ${err}`)
+        const msg = `${model.label}: ${createRes.status} ${err.slice(0, 120)}`
+        console.warn(`[text-to-video] ${msg}`)
+        errors.push(msg)
         continue
       }
 
@@ -136,7 +143,9 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
       while (Date.now() - start < maxWait) {
         if (result.status === 'succeeded') break
         if (result.status === 'failed' || result.status === 'canceled') {
-          throw new Error(`${model.label} failed: ${result.error || 'Unknown error'}`)
+          const msg = `${model.label} prediction ${result.status}: ${result.error || 'Unknown error'}`
+          errors.push(msg)
+          throw new Error(msg)
         }
         await new Promise(r => setTimeout(r, 5000))
         const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
@@ -146,13 +155,17 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
       }
 
       if (result.status !== 'succeeded') {
-        console.warn(`[text-to-video] ${model.label} timed out`)
+        const msg = `${model.label} timed out after 5 minutes`
+        console.warn(`[text-to-video] ${msg}`)
+        errors.push(msg)
         continue
       }
 
       const outputUrl = typeof result.output === 'string' ? result.output : result.output?.[0] || result.output?.video
       if (!outputUrl) {
-        console.warn(`[text-to-video] ${model.label} returned no output`)
+        const msg = `${model.label} returned no output URL`
+        console.warn(`[text-to-video] ${msg}`)
+        errors.push(msg)
         continue
       }
 
@@ -175,13 +188,15 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
         prompt: options.prompt,
       }
     } catch (err) {
-      console.warn(`[text-to-video] ${model.label} error:`, err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`[text-to-video] ${model.label} error:`, msg)
+      if (!errors.includes(msg)) errors.push(msg)
       continue
     }
   }
 
-  // Fallback to Pollinations
-  return generateWithPollinations(options)
+  // Fallback to Pollinations — pass collected errors for final message
+  return generateWithPollinations(options, errors)
 }
 
 /**
@@ -190,7 +205,7 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
  * Generates a still image from Pollinations and converts it to a short
  * video clip with ffmpeg (Ken Burns pan/zoom effect).
  */
-async function generateWithPollinations(options: TextToVideoOptions): Promise<TextToVideoResult> {
+async function generateWithPollinations(options: TextToVideoOptions, priorErrors: string[] = []): Promise<TextToVideoResult> {
   const prompt = encodeURIComponent(options.prompt)
   const duration = options.duration || 5
 
@@ -231,8 +246,10 @@ async function generateWithPollinations(options: TextToVideoOptions): Promise<Te
       prompt: options.prompt,
     }
   } catch (err) {
-    console.error('[text-to-video] Pollinations fallback failed:', err)
-    throw new Error('All video generation providers failed. Please try again or check your API keys.')
+    const pollinationsMsg = err instanceof Error ? err.message : String(err)
+    console.error('[text-to-video] Pollinations fallback failed:', pollinationsMsg)
+    const allErrors = [...priorErrors, `Pollinations: ${pollinationsMsg}`]
+    throw new Error(`All video generation providers failed:\n${allErrors.map(e => `  • ${e}`).join('\n')}`)
   }
 }
 
@@ -243,15 +260,15 @@ export function getTextToVideoProviders() {
   return [
     {
       id: 'replicate',
-      name: 'Replicate (Wan 2.1)',
+      name: 'Replicate (MiniMax Video-01 / LTX-Video)',
       available: !!(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
-      description: 'High-quality AI video generation via Wan 2.1 / MiniMax',
+      description: 'High-quality AI video generation via MiniMax Video-01 and LTX-Video',
     },
     {
       id: 'pollinations',
       name: 'Pollinations (Free)',
       available: true,
-      description: 'Free AI video generation (lower quality)',
+      description: 'Free image-to-video generation using Ken Burns effect (fallback)',
     },
   ]
 }

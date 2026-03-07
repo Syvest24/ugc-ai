@@ -172,7 +172,7 @@ export async function generateAvatar(options: AvatarGenerateOptions): Promise<Av
     case 'did':
       return generateWithDID(faceImageUrl, audioUrl, durationMs)
     case 'sadtalker':
-      return generateWithSadTalker(faceImageUrl, audioUrl)
+      return generateWithSadTalker(faceImageUrl, audioUrl, durationMs)
     case 'static':
     default:
       return generateStatic(faceImageUrl, durationMs)
@@ -260,41 +260,70 @@ async function generateWithDID(
 
 // ─── Provider: SadTalker via Replicate ───────────────────────
 
+/**
+ * POST to a Replicate model endpoint with automatic 429 retry.
+ * Returns the parsed prediction JSON, or null if still throttled after retries.
+ */
+async function replicatePostWithRetry(
+  endpoint: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  maxRetries = 2,
+): Promise<Record<string, unknown> | null> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}))
+      const retryAfter = (data.retry_after ?? 15) as number
+      console.warn(`[Avatar] Replicate 429 throttled — retry in ${retryAfter}s (attempt ${attempt + 1}/${maxRetries + 1})`)
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, retryAfter * 1000))
+        continue
+      }
+      return null // exhausted retries
+    }
+
+    if (!res.ok) return null
+    return res.json()
+  }
+  return null
+}
+
 async function generateWithSadTalker(
   faceImageUrl: string,
   audioUrl: string,
+  durationMs?: number,
 ): Promise<AvatarResult> {
   const apiKey = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
   if (!apiKey) throw new Error('REPLICATE_API_TOKEN not configured')
 
-  // Use official model endpoint (always latest version, no stale hashes)
-  // Try LivePortrait first (better quality), fall back to SadTalker
-  const modelEndpoint = 'https://api.replicate.com/v1/models/cuuupid/liveportrait/predictions'
-
-  const createRes = await fetch(modelEndpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  // Try LivePortrait first (better quality), fall back to SadTalker, then static
+  const prediction = await replicatePostWithRetry(
+    'https://api.replicate.com/v1/models/cuuupid/liveportrait/predictions',
+    apiKey,
+    {
       input: {
         image: faceImageUrl,
-        video: audioUrl, // LivePortrait uses driving video/audio
+        video: audioUrl,
         live_portrait_dsize: 512,
         live_portrait_scale: 2.3,
         video_select_every_n_frames: 1,
       },
-    }),
-  })
+    },
+  )
 
-  // If LivePortrait fails, fall back to SadTalker
-  if (!createRes.ok) {
-    console.warn('[Avatar] LivePortrait failed, trying SadTalker...')
-    return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl)
+  if (!prediction) {
+    console.warn('[Avatar] LivePortrait unavailable (throttled/error), trying SadTalker...')
+    return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl, durationMs)
   }
-
-  const prediction = await createRes.json()
 
   // Poll for completion (max 3 minutes)
   const maxWait = 180_000
@@ -304,60 +333,51 @@ async function generateWithSadTalker(
   while (Date.now() - start < maxWait) {
     if (result.status === 'succeeded') break
     if (result.status === 'failed') {
-      // Fall back to SadTalker on failure
-      console.warn('[Avatar] LivePortrait generation failed, trying SadTalker...')
-      return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl)
+      console.warn('[Avatar] LivePortrait failed, trying SadTalker...')
+      return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl, durationMs)
     }
-
     await new Promise(r => setTimeout(r, 3000))
-    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id as string}`, {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     })
     result = await pollRes.json()
   }
 
   if (result.status !== 'succeeded') {
-    throw new Error('Avatar generation timed out')
+    console.warn('[Avatar] LivePortrait timed out, trying SadTalker...')
+    return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl, durationMs)
   }
 
   const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output
-  if (!outputUrl) throw new Error('Avatar generation returned no output')
+  if (!outputUrl) return generateWithSadTalkerFallback(apiKey, faceImageUrl, audioUrl, durationMs)
 
-  // Download the video
-  const videoRes = await fetch(outputUrl)
+  const videoRes = await fetch(outputUrl as string)
   const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
   const filename = `avatar_${crypto.randomUUID().slice(0, 8)}.mp4`
-  const outputPath = path.join(OUTPUT_DIR, filename)
-  await writeFile(outputPath, videoBuffer)
-
-  const servePath = IS_SERVERLESS
-    ? `/api/generated/avatar/${filename}`
-    : `/generated/avatar/${filename}`
+  await writeFile(path.join(OUTPUT_DIR, filename), videoBuffer)
 
   return {
-    videoUrl: servePath,
+    videoUrl: IS_SERVERLESS ? `/api/generated/avatar/${filename}` : `/generated/avatar/${filename}`,
     provider: 'sadtalker',
     model: 'liveportrait',
     isVideo: true,
-    duration: 0, // determined by audio length
+    duration: 0,
   }
 }
 
 /**
- * Fallback: SadTalker via Replicate (uses official model endpoint)
+ * SadTalker via Replicate — falls back to static overlay on 429.
  */
 async function generateWithSadTalkerFallback(
   apiKey: string,
   faceImageUrl: string,
   audioUrl: string,
+  durationMs?: number,
 ): Promise<AvatarResult> {
-  const createRes = await fetch('https://api.replicate.com/v1/models/cjwbw/sadtalker/predictions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const prediction = await replicatePostWithRetry(
+    'https://api.replicate.com/v1/models/cjwbw/sadtalker/predictions',
+    apiKey,
+    {
       input: {
         source_image: faceImageUrl,
         driven_audio: audioUrl,
@@ -367,15 +387,15 @@ async function generateWithSadTalkerFallback(
         pose_style: 0,
         expression_scale: 1.0,
       },
-    }),
-  })
+    },
+  )
 
-  if (!createRes.ok) {
-    const err = await createRes.text()
-    throw new Error(`Replicate API error: ${createRes.status} — ${err}`)
+  if (!prediction) {
+    // Rate-limited on all Replicate models — fall back to free static overlay
+    console.warn('[Avatar] Replicate throttled on all models — using free static overlay')
+    return generateStatic(faceImageUrl, durationMs)
   }
 
-  const prediction = await createRes.json()
   const maxWait = 180_000
   const start = Date.now()
   let result = prediction
@@ -383,32 +403,31 @@ async function generateWithSadTalkerFallback(
   while (Date.now() - start < maxWait) {
     if (result.status === 'succeeded') break
     if (result.status === 'failed') {
-      throw new Error(`SadTalker failed: ${result.error || 'Unknown error'}`)
+      console.warn('[Avatar] SadTalker failed — using free static overlay')
+      return generateStatic(faceImageUrl, durationMs)
     }
     await new Promise(r => setTimeout(r, 3000))
-    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id as string}`, {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     })
     result = await pollRes.json()
   }
 
-  if (result.status !== 'succeeded') throw new Error('SadTalker generation timed out')
+  if (result.status !== 'succeeded') {
+    console.warn('[Avatar] SadTalker timed out — using free static overlay')
+    return generateStatic(faceImageUrl, durationMs)
+  }
 
   const outputUrl = result.output
-  if (!outputUrl) throw new Error('SadTalker returned no output')
+  if (!outputUrl) return generateStatic(faceImageUrl, durationMs)
 
-  const videoRes = await fetch(outputUrl)
+  const videoRes = await fetch(outputUrl as string)
   const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
   const filename = `avatar_${crypto.randomUUID().slice(0, 8)}.mp4`
-  const outputPath = path.join(OUTPUT_DIR, filename)
-  await writeFile(outputPath, videoBuffer)
-
-  const servePath = IS_SERVERLESS
-    ? `/api/generated/avatar/${filename}`
-    : `/generated/avatar/${filename}`
+  await writeFile(path.join(OUTPUT_DIR, filename), videoBuffer)
 
   return {
-    videoUrl: servePath,
+    videoUrl: IS_SERVERLESS ? `/api/generated/avatar/${filename}` : `/generated/avatar/${filename}`,
     provider: 'sadtalker',
     model: 'sadtalker-replicate',
     isVideo: true,

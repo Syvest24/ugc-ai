@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import {
   generateAvatar,
   generateAvatarFaceUrl,
+  fetchAvatarFace,
   getAvailableProviders,
   AVATAR_PRESETS,
   AVATAR_POSITIONS,
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
         return badRequest(`Unknown preset: ${presetId}`)
       }
 
-      const faceUrl = generateAvatarFaceUrl(preset.prompt, Date.now())
+      const faceUrl = await fetchAvatarFace(preset.prompt, Date.now())
       done(200)
       return apiSuccess({
         data: {

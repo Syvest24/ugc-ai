@@ -134,7 +134,7 @@ async function generateWithPollinations(opts: ImageGenOptions): Promise<ImageGen
 
   // Pollinations uses GET with URL-encoded prompt
   const encodedPrompt = encodeURIComponent(opts.prompt)
-  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`
+  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true`
 
   // Always fetch the image server-side to validate it works
   const controller = new AbortController()

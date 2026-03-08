@@ -333,7 +333,7 @@ async function extendWithReplicate(options: ImageEditOptions): Promise<ImageEdit
 async function enhanceWithPollinations(options: ImageEditOptions): Promise<ImageEditResult> {
   const prompt = options.prompt || 'enhance this image, high quality, detailed, sharp'
   const encodedPrompt = encodeURIComponent(prompt)
-  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
+  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
 
   try {
     const servePath = await downloadAndSave(externalUrl, 'enhanced')
@@ -348,7 +348,7 @@ async function restyleWithPollinations(options: ImageEditOptions): Promise<Image
   const stylePrompt = styleInfo?.prompt || options.prompt || 'enhanced artistic version'
   const fullPrompt = `${stylePrompt}, based on reference image, high quality`
   const encodedPrompt = encodeURIComponent(fullPrompt)
-  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
+  const externalUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
 
   try {
     const servePath = await downloadAndSave(externalUrl, 'restyled')

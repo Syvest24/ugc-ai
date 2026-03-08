@@ -47,3 +47,8 @@ dev.db
 
 # backups
 /backups/
+
+# generated media
+public/generated/audio/
+public/generated/video/
+public/generated/thumbnails/

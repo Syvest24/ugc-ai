@@ -73,7 +73,7 @@ Make it feel authentic, not salesy. Use proven copywriting frameworks (PAS, AIDA
 
     // Generate a preview image using Pollinations
     const imagePrompt = adData.imagePrompt || `${productName} advertisement, professional product photography`
-    const previewImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=768&height=768&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
+    const previewImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=768&height=768&model=flux&nologo=true&seed=${Date.now()}`
 
     done(200)
     return apiSuccess({

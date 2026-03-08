@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AVATAR_PRESETS, generateAvatarFaceUrl } from '@/lib/avatar'
+import { AVATAR_PRESETS, fetchAvatarFace } from '@/lib/avatar'
 
 /**
  * GET /api/video/avatar/preview?preset=ai-woman-1
  *
- * Redirects to the Pollinations AI face URL for a given preset.
+ * Fetches and serves the AI face image for a given preset.
  * Uses a fixed seed per preset so the thumbnail is stable/cacheable.
  */
 export async function GET(req: NextRequest) {
@@ -18,11 +18,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Unknown preset: ${presetId}` }, { status: 404 })
   }
 
-  const faceUrl = generateAvatarFaceUrl(preset.prompt, preset.seed)
+  const localPath = await fetchAvatarFace(preset.prompt, preset.seed)
 
-  // Redirect to Pollinations — browser/img tag will follow the redirect.
-  // Cache the redirect for 24 hours so thumbnails are fast after first load.
-  return NextResponse.redirect(faceUrl, {
+  // If it's a data URI (placeholder or serverless), redirect to it directly
+  // Otherwise, redirect to the local file path
+  if (localPath.startsWith('data:')) {
+    return NextResponse.redirect(localPath, { status: 302 })
+  }
+
+  const baseUrl = req.nextUrl.origin
+  return NextResponse.redirect(`${baseUrl}${localPath}`, {
     status: 302,
     headers: {
       'Cache-Control': 'public, max-age=86400, s-maxage=86400',

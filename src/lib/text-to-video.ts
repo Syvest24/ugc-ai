@@ -210,7 +210,7 @@ async function generateWithPollinations(options: TextToVideoOptions, priorErrors
   const duration = options.duration || 5
 
   // Generate a still image and animate it with ffmpeg
-  const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&model=flux&nologo=true&enhance=true&seed=${Date.now()}`
+  const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1024&height=576&model=flux&nologo=true&seed=${Date.now()}`
 
   try {
     const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(60_000) })

@@ -457,22 +457,65 @@ async function generateStatic(
 
 // ─── AI Face Generation (via Pollinations) ────────────────────
 
+const AVATAR_OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated', 'thumbnails')
+
 /**
  * Generate an AI avatar face image using Pollinations (free).
  * Returns a URL to the generated face image.
  */
 export function generateAvatarFaceUrl(prompt: string, seed?: number): string {
   const params = new URLSearchParams({
-    width: '768',
-    height: '768',
+    width: '512',
+    height: '512',
     model: 'flux',
     nologo: 'true',
-    enhance: 'true',
     ...(seed !== undefined ? { seed: String(seed) } : {}),
   })
 
   const encodedPrompt = encodeURIComponent(prompt)
   return `https://image.pollinations.ai/prompt/${encodedPrompt}?${params}`
+}
+
+/**
+ * Fetch and save an avatar face image locally so it's available for video rendering.
+ * Falls back to a placeholder SVG data URI if the external fetch fails.
+ */
+export async function fetchAvatarFace(prompt: string, seed?: number): Promise<string> {
+  const url = generateAvatarFaceUrl(prompt, seed)
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30_000)
+
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeout)
+
+    if (!res.ok) throw new Error(`Pollinations returned ${res.status}`)
+
+    const ct = res.headers.get('content-type') || ''
+    if (!ct.startsWith('image/')) throw new Error(`Non-image response: ${ct}`)
+
+    const buffer = Buffer.from(await res.arrayBuffer())
+    if (buffer.length < 1000) throw new Error('Image too small — likely an error')
+
+    if (!IS_SERVERLESS) {
+      await mkdir(AVATAR_OUTPUT_DIR, { recursive: true })
+      const filename = `avatar-${crypto.randomUUID().slice(0, 8)}.jpg`
+      const filePath = path.join(AVATAR_OUTPUT_DIR, filename)
+      await writeFile(filePath, buffer)
+      return `/generated/thumbnails/${filename}`
+    }
+
+    // On serverless, return as data URI
+    const base64 = buffer.toString('base64')
+    const ext = ct.includes('png') ? 'png' : 'jpeg'
+    return `data:image/${ext};base64,${base64}`
+  } catch (err) {
+    console.warn('[avatar] Failed to fetch from Pollinations, using placeholder:', err instanceof Error ? err.message : err)
+    // Return a simple placeholder SVG as data URI
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="%23374151"/><circle cx="256" cy="200" r="80" fill="%239CA3AF"/><ellipse cx="256" cy="420" rx="130" ry="100" fill="%239CA3AF"/></svg>`
+    return `data:image/svg+xml,${svg}`
+  }
 }
 
 /**

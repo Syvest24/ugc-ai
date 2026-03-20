@@ -12,6 +12,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { isR2Configured, uploadToR2 } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -176,9 +177,21 @@ async function generateWithReplicate(options: TextToVideoOptions): Promise<TextT
       const outputPath = path.join(OUTPUT_DIR, filename)
       await writeFile(outputPath, videoBuffer)
 
-      const servePath = IS_SERVERLESS
-        ? `/api/generated/text-to-video/${filename}`
-        : `/generated/text-to-video/${filename}`
+      // Upload to R2 if configured
+      let servePath: string
+      if (isR2Configured) {
+        try {
+          servePath = await uploadToR2(`text-to-video/${filename}`, videoBuffer)
+        } catch {
+          servePath = IS_SERVERLESS
+            ? `/api/generated/text-to-video/${filename}`
+            : `/generated/text-to-video/${filename}`
+        }
+      } else {
+        servePath = IS_SERVERLESS
+          ? `/api/generated/text-to-video/${filename}`
+          : `/generated/text-to-video/${filename}`
+      }
 
       return {
         videoUrl: servePath,
@@ -234,9 +247,23 @@ async function generateWithPollinations(options: TextToVideoOptions, priorErrors
       outputPath,
     ], { timeout: 120_000, stdio: 'pipe' })
 
-    const servePath = IS_SERVERLESS
-      ? `/api/generated/text-to-video/${filename}`
-      : `/generated/text-to-video/${filename}`
+    // Upload to R2 if configured
+    let servePath: string
+    if (isR2Configured) {
+      try {
+        const { readFile: readLocalFile } = await import('fs/promises')
+        const videoBuf = await readLocalFile(outputPath)
+        servePath = await uploadToR2(`text-to-video/${filename}`, videoBuf)
+      } catch {
+        servePath = IS_SERVERLESS
+          ? `/api/generated/text-to-video/${filename}`
+          : `/generated/text-to-video/${filename}`
+      }
+    } else {
+      servePath = IS_SERVERLESS
+        ? `/api/generated/text-to-video/${filename}`
+        : `/generated/text-to-video/${filename}`
+    }
 
     return {
       videoUrl: servePath,

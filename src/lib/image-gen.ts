@@ -16,6 +16,7 @@
 import { logger } from '@/lib/logger'
 import crypto from 'crypto'
 import { GoogleGenAI, Modality } from '@google/genai'
+import { isR2Configured, uploadToR2 } from './r2'
 
 // Re-export client-safe constants so server code can import from here too
 export { IMAGE_STYLES, IMAGE_ASPECT_RATIOS, IMAGE_PROVIDERS, type ImageStyle } from '@/lib/image-constants'
@@ -68,8 +69,23 @@ const DEFAULT_NEGATIVE = 'blurry, low quality, distorted, watermark, text, logo,
 
 // ─── Local file storage (dev only) ───────────────────────────────────
 
-async function saveToLocal(buffer: Buffer, filename: string): Promise<string> {
-  if (IS_SERVERLESS) return '' // Skip on serverless
+/**
+ * Save an image buffer. Uploads to R2 when configured, otherwise saves locally.
+ * Returns { url, localPath } where url is the serve URL and localPath is the local file (or empty).
+ */
+async function saveImage(buffer: Buffer, filename: string): Promise<{ url: string; localPath: string }> {
+  // Upload to R2 if configured (works everywhere: serverless + local)
+  if (isR2Configured) {
+    const r2Key = `generated-images/${filename}`
+    const url = await uploadToR2(r2Key, buffer)
+    return { url, localPath: '' }
+  }
+
+  // Fallback: local filesystem (dev only)
+  if (IS_SERVERLESS) {
+    // No R2 and serverless — return data URI as last resort
+    return { url: `data:image/png;base64,${buffer.toString('base64')}`, localPath: '' }
+  }
 
   const fs = await import('fs')
   const path = await import('path')
@@ -81,7 +97,7 @@ async function saveToLocal(buffer: Buffer, filename: string): Promise<string> {
 
   const localPath = path.join(OUTPUT_DIR, filename)
   fs.writeFileSync(localPath, buffer)
-  return localPath
+  return { url: `/generated-images/${filename}`, localPath }
 }
 
 // ─── Main entry ──────────────────────────────────────────────────────
@@ -156,26 +172,12 @@ async function generateWithPollinations(opts: ImageGenOptions): Promise<ImageGen
       throw new Error('Pollinations returned suspiciously small image')
     }
 
-    if (IS_SERVERLESS) {
-      // On serverless, return as data URI (no local FS)
-      const mimeType = ct.split(';')[0] || 'image/png'
-      return {
-        url: `data:${mimeType};base64,${buffer.toString('base64')}`,
-        width,
-        height,
-        provider: 'pollinations',
-        model: 'flux',
-        seed,
-      }
-    }
-
-    // In dev, save locally
     const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-    const localPath = await saveToLocal(buffer, filename)
+    const { url, localPath } = await saveImage(buffer, filename)
 
     return {
-      url: `/generated-images/${filename}`,
-      localPath,
+      url,
+      localPath: localPath || undefined,
       width,
       height,
       provider: 'pollinations',
@@ -254,27 +256,15 @@ async function generateWithReplicate(opts: ImageGenOptions): Promise<ImageGenRes
   const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output
   if (!imageUrl) throw new Error('No image URL in Replicate response')
 
-  if (IS_SERVERLESS) {
-    // Return Replicate's hosted URL directly (it's a CDN URL, not ephemeral)
-    return {
-      url: imageUrl,
-      width,
-      height,
-      provider: 'replicate',
-      model: 'flux-schnell',
-      seed: opts.seed,
-    }
-  }
-
-  // In dev, download and save locally
+  // Download and save (to R2 or local)
   const imgRes = await fetch(imageUrl)
   const buffer = Buffer.from(await imgRes.arrayBuffer())
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-  const localPath = await saveToLocal(buffer, filename)
+  const { url, localPath } = await saveImage(buffer, filename)
 
   return {
-    url: `/generated-images/${filename}`,
-    localPath,
+    url,
+    localPath: localPath || undefined,
     width,
     height,
     provider: 'replicate',
@@ -332,26 +322,13 @@ async function generateWithTogether(opts: ImageGenOptions): Promise<ImageGenResu
   const b64 = data.data?.[0]?.b64_json
   if (!b64) throw new Error('No image data returned from Together.ai')
 
-  if (IS_SERVERLESS) {
-    // On serverless, return as data URI (no local FS)
-    return {
-      url: `data:image/png;base64,${b64}`,
-      width,
-      height,
-      provider: 'together',
-      model,
-      seed: data.data?.[0]?.seed,
-    }
-  }
-
-  // In dev, decode and save locally
   const buffer = Buffer.from(b64, 'base64')
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-  const localPath = await saveToLocal(buffer, filename)
+  const { url, localPath } = await saveImage(buffer, filename)
 
   return {
-    url: `/generated-images/${filename}`,
-    localPath,
+    url,
+    localPath: localPath || undefined,
     width,
     height,
     provider: 'together',
@@ -392,25 +369,12 @@ async function generateWithStability(opts: ImageGenOptions): Promise<ImageGenRes
   }
 
   const buffer = Buffer.from(await response.arrayBuffer())
-
-  if (IS_SERVERLESS) {
-    // On serverless, return as data URI
-    return {
-      url: `data:image/png;base64,${buffer.toString('base64')}`,
-      width,
-      height,
-      provider: 'stability',
-      model: 'sd3',
-    }
-  }
-
-  // In dev, save locally
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`
-  const localPath = await saveToLocal(buffer, filename)
+  const { url, localPath } = await saveImage(buffer, filename)
 
   return {
-    url: `/generated-images/${filename}`,
-    localPath,
+    url,
+    localPath: localPath || undefined,
     width,
     height,
     provider: 'stability',
@@ -467,25 +431,14 @@ async function generateWithGemini(opts: ImageGenOptions): Promise<ImageGenResult
     throw new Error('Gemini did not return an image. Try a more descriptive prompt.')
   }
 
-  if (IS_SERVERLESS) {
-    return {
-      url: `data:${mimeType};base64,${imageData}`,
-      width,
-      height,
-      provider: 'gemini',
-      model: 'gemini-2.0-flash-exp',
-    }
-  }
-
-  // In dev, decode and save locally
   const buffer = Buffer.from(imageData, 'base64')
   const ext = mimeType.includes('png') ? 'png' : 'jpg'
   const filename = `img-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`
-  const localPath = await saveToLocal(buffer, filename)
+  const { url, localPath } = await saveImage(buffer, filename)
 
   return {
-    url: `/generated-images/${filename}`,
-    localPath,
+    url,
+    localPath: localPath || undefined,
     width,
     height,
     provider: 'gemini',

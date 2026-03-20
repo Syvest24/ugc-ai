@@ -5,11 +5,12 @@
  * Supports both local file paths and remote URLs.
  */
 
-import { writeFile, mkdir } from 'fs/promises'
+import { writeFile, mkdir, readFile as readLocalFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import { execFileSync } from 'child_process'
+import { isR2Configured, uploadToR2 } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -137,9 +138,22 @@ async function transformWithFfmpeg(srcPath: string, options: VideoToVideoOptions
     }
   }
 
-  const servePath = IS_SERVERLESS
-    ? `/api/generated/video-to-video/${filename}`
-    : `/generated/video-to-video/${filename}`
+  // Upload to R2 if configured
+  let servePath: string
+  if (isR2Configured) {
+    try {
+      const videoBuf = await readLocalFile(outputPath)
+      servePath = await uploadToR2(`video-to-video/${filename}`, videoBuf)
+    } catch {
+      servePath = IS_SERVERLESS
+        ? `/api/generated/video-to-video/${filename}`
+        : `/generated/video-to-video/${filename}`
+    }
+  } else {
+    servePath = IS_SERVERLESS
+      ? `/api/generated/video-to-video/${filename}`
+      : `/generated/video-to-video/${filename}`
+  }
 
   return {
     videoUrl: servePath,

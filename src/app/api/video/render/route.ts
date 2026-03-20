@@ -6,6 +6,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { ensureUser, prisma } from '@/lib/db'
 import { apiSuccess, apiError, unauthorized, rateLimited, badRequest, serverError } from '@/lib/api-response'
 import { logger } from '@/lib/logger'
+import { isR2Configured, uploadToR2 } from '@/lib/r2'
 import path from 'path'
 import fs from 'fs'
 import { execFileSync } from 'child_process'
@@ -46,6 +47,16 @@ async function extractThumbnail(videoServePath: string): Promise<string | undefi
       '-q:v', '2',
       thumbFsPath,
     ], { stdio: 'pipe', timeout: 15_000 })
+
+    // Upload thumbnail to R2 if configured
+    if (isR2Configured && fs.existsSync(thumbFsPath)) {
+      try {
+        const thumbBuffer = fs.readFileSync(thumbFsPath)
+        return await uploadToR2(`thumbnails/${thumbFilename}`, thumbBuffer)
+      } catch (e) {
+        console.warn('[render] R2 thumbnail upload failed:', e)
+      }
+    }
 
     return IS_SERVERLESS
       ? `/api/generated/thumbnails/${thumbFilename}`

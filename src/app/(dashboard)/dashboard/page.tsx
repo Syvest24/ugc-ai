@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { PenSquare, BookMarked, Zap, TrendingUp, ArrowRight, Sparkles, Video, Film, ImageIcon } from 'lucide-react'
 import type { Metadata } from 'next'
 import OnboardingModal from '@/components/OnboardingModal'
+import QuickGenerate from '@/components/QuickGenerate'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -56,6 +57,9 @@ export default async function DashboardPage() {
         <h1 className="text-3xl font-bold text-white mb-1">Welcome back, {name} 👋</h1>
         <p className="text-gray-400">Ready to create content that converts?</p>
       </div>
+
+      {/* Quick Generate */}
+      <QuickGenerate />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

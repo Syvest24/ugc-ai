@@ -258,11 +258,19 @@ ${item.output.hashtags.join('\n')}
               ? 'No results match your filters'
               : 'No saved content yet'}
           </h3>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 text-sm mb-4">
             {debouncedSearch || platformFilter || goalFilter
               ? 'Try adjusting your search or filters'
               : 'Generate content and save it to see it here'}
           </p>
+          {!(debouncedSearch || platformFilter || goalFilter) && (
+            <a
+              href="/generate"
+              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              Start Generating
+            </a>
+          )}
           {(debouncedSearch || platformFilter || goalFilter) && (
             <button
               onClick={clearFilters}

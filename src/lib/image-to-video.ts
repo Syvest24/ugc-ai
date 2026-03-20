@@ -8,10 +8,11 @@
  *  3. Local ffmpeg fallback — Ken Burns effect (zoom/pan) for instant results
  */
 
-import { writeFile, mkdir } from 'fs/promises'
+import { writeFile, mkdir, readFile as readLocalFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { isR2Configured, uploadToR2 } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -185,6 +186,21 @@ async function generateWithReplicate(
       const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output
 
       if (IS_SERVERLESS) {
+        // On serverless, download and upload to R2 if configured
+        if (isR2Configured) {
+          const videoResponse = await fetch(outputUrl)
+          const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+          const filename = `vid_${crypto.randomUUID().slice(0, 8)}.mp4`
+          const r2Url = await uploadToR2(`generated-videos/from-image/${filename}`, videoBuffer)
+          return {
+            videoUrl: r2Url,
+            provider: 'replicate',
+            model: model.name,
+            duration,
+            width,
+            height,
+          }
+        }
         return {
           videoUrl: outputUrl,
           provider: 'replicate',
@@ -201,6 +217,19 @@ async function generateWithReplicate(
       const filename = `vid_${crypto.randomUUID().slice(0, 8)}.mp4`
       const outputPath = path.join(OUTPUT_DIR, filename)
       await writeFile(outputPath, videoBuffer)
+
+      // Upload to R2 if configured
+      if (isR2Configured) {
+        const r2Url = await uploadToR2(`generated-videos/from-image/${filename}`, videoBuffer)
+        return {
+          videoUrl: r2Url,
+          provider: 'replicate',
+          model: model.name,
+          duration,
+          width,
+          height,
+        }
+      }
 
       return {
         videoUrl: `/generated-videos/from-image/${filename}`,
@@ -243,13 +272,21 @@ async function generateWithPollinations(
     throw new Error(`Pollinations video API error: ${response.status}`)
   }
 
-  const videoBuffer = Buffer.from(await response.arrayBuffer())
+  const videoBuffer2 = Buffer.from(await response.arrayBuffer())
   const filename = `vid_${crypto.randomUUID().slice(0, 8)}.mp4`
   const outputPath = path.join(OUTPUT_DIR, filename)
-  await writeFile(outputPath, videoBuffer)
+  await writeFile(outputPath, videoBuffer2)
+
+  // Upload to R2 if configured
+  let serveUrl: string
+  if (isR2Configured) {
+    serveUrl = await uploadToR2(`generated-videos/from-image/${filename}`, videoBuffer2)
+  } else {
+    serveUrl = `/generated-videos/from-image/${filename}`
+  }
 
   return {
-    videoUrl: `/generated-videos/from-image/${filename}`,
+    videoUrl: serveUrl,
     provider: 'pollinations',
     model: 'pollinations-video',
     duration,
@@ -313,8 +350,21 @@ async function generateLocalKenBurns(
   const { unlink } = await import('fs/promises')
   await unlink(imagePath).catch(() => {})
 
+  // Upload to R2 if configured
+  let serveUrl: string
+  if (isR2Configured) {
+    try {
+      const videoBuf = await readLocalFile(outputPath)
+      serveUrl = await uploadToR2(`generated-videos/from-image/${filename}`, videoBuf)
+    } catch {
+      serveUrl = `/generated-videos/from-image/${filename}`
+    }
+  } else {
+    serveUrl = `/generated-videos/from-image/${filename}`
+  }
+
   return {
-    videoUrl: `/generated-videos/from-image/${filename}`,
+    videoUrl: serveUrl,
     provider: 'local',
     model: `ffmpeg-${motion}`,
     duration,

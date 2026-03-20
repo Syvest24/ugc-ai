@@ -1,6 +1,7 @@
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import fs from 'fs'
 import path from 'path'
+import { isR2Configured, uploadToR2 } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -101,7 +102,7 @@ export async function generateTTS(
       })
     }
 
-    writeStream.on('finish', () => {
+    writeStream.on('finish', async () => {
       tts.close()
 
       // Verify audio file has content
@@ -112,10 +113,24 @@ export async function generateTTS(
         return
       }
 
-      // Return a serveable URL path (the /api/generated/ route handles serving from /tmp)
-      const servePath = IS_SERVERLESS
-        ? `/api/generated/audio/${id}.mp3`
-        : `/generated/audio/${id}.mp3`
+      // Upload to R2 if configured
+      let servePath: string
+      if (isR2Configured) {
+        try {
+          const buffer = fs.readFileSync(audioPath)
+          const r2Key = `audio/${id}.mp3`
+          servePath = await uploadToR2(r2Key, buffer)
+        } catch (err) {
+          console.warn('[TTS] R2 upload failed, falling back to local serve:', err)
+          servePath = IS_SERVERLESS
+            ? `/api/generated/audio/${id}.mp3`
+            : `/generated/audio/${id}.mp3`
+        }
+      } else {
+        servePath = IS_SERVERLESS
+          ? `/api/generated/audio/${id}.mp3`
+          : `/generated/audio/${id}.mp3`
+      }
 
       resolve({
         audioPath: servePath,
@@ -135,16 +150,28 @@ export async function generateTTS(
     })
 
     // Timeout: prevent hanging if TTS WebSocket stalls
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
       tts.close()
       // Check if we got partial audio
       if (fs.existsSync(audioPath)) {
         const stat = fs.statSync(audioPath)
         if (stat.size > 0) {
           console.warn(`[TTS] Timeout but partial audio saved (${(stat.size / 1024).toFixed(1)}KB)`)
-          const servePath = IS_SERVERLESS
-            ? `/api/generated/audio/${id}.mp3`
-            : `/generated/audio/${id}.mp3`
+          let servePath: string
+          if (isR2Configured) {
+            try {
+              const buffer = fs.readFileSync(audioPath)
+              servePath = await uploadToR2(`audio/${id}.mp3`, buffer)
+            } catch {
+              servePath = IS_SERVERLESS
+                ? `/api/generated/audio/${id}.mp3`
+                : `/generated/audio/${id}.mp3`
+            }
+          } else {
+            servePath = IS_SERVERLESS
+              ? `/api/generated/audio/${id}.mp3`
+              : `/generated/audio/${id}.mp3`
+          }
           resolve({
             audioPath: servePath,
             duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),

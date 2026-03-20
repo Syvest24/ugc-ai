@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Zap, ArrowRight, Check, TrendingUp, Sparkles, Target } from 'lucide-react'
+import { Zap, ArrowRight, Check, TrendingUp, Sparkles, Target, Video, ImageIcon, Wand2 } from 'lucide-react'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -67,12 +67,12 @@ export default function LandingPage() {
               Start Generating Free
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link
-              href="/login"
+            <a
+              href="#demo"
               className="inline-flex items-center gap-2 border border-gray-700 hover:border-gray-600 text-gray-300 px-8 py-4 rounded-xl text-base font-semibold transition-all"
             >
-              View Demo
-            </Link>
+              See How It Works
+            </a>
           </div>
         </div>
       </section>
@@ -89,8 +89,60 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* How it works */}
+      <section id="demo" className="px-6 py-20 bg-gray-900/30 scroll-mt-20">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-4">How UGCForge works</h2>
+          <p className="text-gray-400 text-center mb-12 max-w-xl mx-auto">
+            From idea to publish-ready content in three simple steps.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { step: '1', icon: Wand2, title: 'Describe your product', desc: 'Enter your product name, audience, and platform. Our AI handles the rest.' },
+              { step: '2', icon: Sparkles, title: 'AI generates everything', desc: 'Get 10 hooks, a full script, captions, hashtags, CTAs, and A/B variants instantly.' },
+              { step: '3', icon: Video, title: 'Create & export video', desc: 'Turn your script into a polished video with AI voices, stock footage, and captions.' },
+            ].map(s => (
+              <div key={s.step} className="text-center">
+                <div className="w-12 h-12 rounded-full bg-violet-600/20 border border-violet-600/30 flex items-center justify-center mx-auto mb-4 text-lg font-bold text-violet-400">
+                  {s.step}
+                </div>
+                <h3 className="font-semibold text-gray-100 mb-2">{s.title}</h3>
+                <p className="text-sm text-gray-400">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Capabilities */}
       <section className="px-6 py-20">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-4">One platform, every content type</h2>
+          <p className="text-gray-400 text-center mb-12 max-w-xl mx-auto">
+            Scripts, videos, images, ads — all generated and edited with AI.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: Sparkles, label: 'UGC Scripts', color: 'violet' },
+              { icon: Video, label: 'AI Videos', color: 'pink' },
+              { icon: ImageIcon, label: 'AI Images', color: 'emerald' },
+              { icon: Target, label: 'Ad Campaigns', color: 'blue' },
+              { icon: Wand2, label: 'Image Editing', color: 'amber' },
+              { icon: TrendingUp, label: 'Analytics', color: 'cyan' },
+              { icon: Zap, label: 'Text to Video', color: 'rose' },
+              { icon: ArrowRight, label: 'Style Transfer', color: 'indigo' },
+            ].map(cap => (
+              <div key={cap.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center hover:border-gray-700 transition-colors">
+                <cap.icon className="w-6 h-6 mx-auto mb-2 text-gray-300" />
+                <span className="text-sm font-medium text-gray-200">{cap.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="px-6 py-20 bg-gray-900/30">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-4">Everything you need to go viral</h2>
           <p className="text-gray-400 text-center mb-12 max-w-xl mx-auto">

@@ -6,20 +6,48 @@ import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, C
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/generate', label: 'Generate UGC', icon: PenSquare },
-  { href: '/video', label: 'Create Video', icon: Video },
-  { href: '/text-to-video', label: 'Text to Video', icon: Film },
-  { href: '/video-to-video', label: 'Video to Video', icon: Palette },
-  { href: '/images', label: 'AI Images', icon: ImageIcon },
-  { href: '/image-editor', label: 'Image Editor', icon: Wand2 },
-  { href: '/ai-ads', label: 'AI Ads', icon: Megaphone },
-  { href: '/explore', label: 'Explore', icon: Compass },
-  { href: '/calendar', label: 'Calendar', icon: Calendar },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/saved', label: 'Saved', icon: BookMarked },
-  { href: '/settings', label: 'Settings', icon: Settings },
+const navSections = [
+  {
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Create',
+    items: [
+      { href: '/generate', label: 'Generate UGC', icon: PenSquare },
+      { href: '/ai-ads', label: 'AI Ads', icon: Megaphone },
+    ],
+  },
+  {
+    label: 'Video',
+    items: [
+      { href: '/video', label: 'Create Video', icon: Video },
+      { href: '/text-to-video', label: 'Text to Video', icon: Film },
+      { href: '/video-to-video', label: 'Style Transfer', icon: Palette },
+    ],
+  },
+  {
+    label: 'Images',
+    items: [
+      { href: '/images', label: 'AI Images', icon: ImageIcon },
+      { href: '/image-editor', label: 'Image Editor', icon: Wand2 },
+    ],
+  },
+  {
+    label: 'Library',
+    items: [
+      { href: '/explore', label: 'Explore', icon: Compass },
+      { href: '/saved', label: 'Saved', icon: BookMarked },
+    ],
+  },
+  {
+    items: [
+      { href: '/calendar', label: 'Calendar', icon: Calendar },
+      { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+      { href: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ]
 
 export default function Navbar() {
@@ -60,26 +88,37 @@ export default function Navbar() {
         </button>
       </div>
 
-      <div className="flex-1 p-4 space-y-1">
-        {navItems.map(item => {
-          const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                isActive
-                  ? 'bg-violet-600/20 text-violet-400 border border-violet-600/30'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              {item.label}
-            </Link>
-          )
-        })}
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {navSections.map((section, si) => (
+          <div key={si}>
+            {section.label && (
+              <div className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                {section.label}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {section.items.map(item => {
+                const Icon = item.icon
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-violet-600/20 text-violet-400 border border-violet-600/30'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="p-4 border-t border-gray-800">

@@ -1,5 +1,6 @@
 import path from 'path'
 import fs from 'fs'
+import { isR2Configured, uploadToR2, downloadFromR2, getR2KeyFromUrl } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -124,15 +125,33 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
     // so headless Chromium can access it via the bundle's HTTP server.
     let resolvedAudioSrc = input.audioSrc
     if (resolvedAudioSrc) {
-      // Convert URL paths to absolute filesystem paths
       let absoluteAudioPath: string | null = null
-      if (resolvedAudioSrc.startsWith('/api/generated/')) {
-        const relativePart = resolvedAudioSrc.replace('/api/generated/', '')
-        absoluteAudioPath = path.join('/tmp', 'generated', relativePart)
-      } else if (resolvedAudioSrc.startsWith('/generated/')) {
-        absoluteAudioPath = path.join(process.cwd(), 'public', resolvedAudioSrc)
-      } else if (resolvedAudioSrc.startsWith('/tmp/') || resolvedAudioSrc.startsWith('/Users/') || resolvedAudioSrc.startsWith('/home/')) {
-        absoluteAudioPath = resolvedAudioSrc
+
+      // If audio is on R2, download it to /tmp first
+      const r2Key = getR2KeyFromUrl(resolvedAudioSrc)
+      if (isR2Configured && r2Key) {
+        try {
+          const audioBuffer = await downloadFromR2(r2Key)
+          const audioFilename = path.basename(r2Key)
+          absoluteAudioPath = path.join('/tmp', 'generated', 'audio', audioFilename)
+          ensureDir(path.dirname(absoluteAudioPath))
+          fs.writeFileSync(absoluteAudioPath, audioBuffer)
+          console.log(`[Render] Downloaded audio from R2: ${r2Key}`)
+        } catch (err) {
+          console.warn(`[Render] Failed to download audio from R2: ${err}`)
+        }
+      }
+
+      // Fallback to local file resolution
+      if (!absoluteAudioPath) {
+        if (resolvedAudioSrc.startsWith('/api/generated/')) {
+          const relativePart = resolvedAudioSrc.replace('/api/generated/', '')
+          absoluteAudioPath = path.join('/tmp', 'generated', relativePart)
+        } else if (resolvedAudioSrc.startsWith('/generated/')) {
+          absoluteAudioPath = path.join(process.cwd(), 'public', resolvedAudioSrc)
+        } else if (resolvedAudioSrc.startsWith('/tmp/') || resolvedAudioSrc.startsWith('/Users/') || resolvedAudioSrc.startsWith('/home/')) {
+          absoluteAudioPath = resolvedAudioSrc
+        }
       }
 
       // Copy audio file into the Remotion bundle so Chromium can serve it
@@ -230,10 +249,27 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
     }
     console.log(`[Render] Output file size: ${(outputStat.size / 1024 / 1024).toFixed(2)}MB`)
 
-    return {
-      videoPath: IS_SERVERLESS
+    // Upload to R2 if configured
+    let servePath: string
+    if (isR2Configured) {
+      try {
+        const videoBuffer = fs.readFileSync(outputPath)
+        const r2Key = `video/${videoId}.${ext}`
+        servePath = await uploadToR2(r2Key, videoBuffer)
+      } catch (err) {
+        console.warn('[Render] R2 upload failed, falling back to local serve:', err)
+        servePath = IS_SERVERLESS
+          ? `/api/generated/video/${videoId}.${ext}`
+          : `/generated/video/${videoId}.${ext}`
+      }
+    } else {
+      servePath = IS_SERVERLESS
         ? `/api/generated/video/${videoId}.${ext}`
-        : `/generated/video/${videoId}.${ext}`,
+        : `/generated/video/${videoId}.${ext}`
+    }
+
+    return {
+      videoPath: servePath,
       durationMs: effectiveDurationMs,
       width: scaledWidth,
       height: scaledHeight,

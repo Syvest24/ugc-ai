@@ -6,7 +6,7 @@ import { z } from 'zod'
 import toast from 'react-hot-toast'
 import { Wand2, Save, Download, RefreshCw, Video, Zap, Loader2, GitBranch } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { GeneratedOutput } from '@/types'
 import { useBrandKitStore } from '@/stores/brand-kit'
@@ -48,6 +48,7 @@ export default function GeneratePage() {
   const [selectedProvider, setSelectedProvider] = useState<string>('')
   const [availableProviders, setAvailableProviders] = useState<Array<{ id: string; name: string; available: boolean; description: string }>>([])
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { brandKit, fetchBrandKit } = useBrandKitStore()
 
   const { register, handleSubmit, getValues, setValue, watch, formState: { errors } } = useForm<FormData>({
@@ -63,6 +64,14 @@ export default function GeneratePage() {
   useEffect(() => {
     fetchBrandKit()
   }, [fetchBrandKit])
+
+  // Pre-fill from Quick Generate (dashboard ?q= param)
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) {
+      setValue('productDescription', q)
+    }
+  }, [searchParams, setValue])
 
   useEffect(() => {
     if (brandKit) {

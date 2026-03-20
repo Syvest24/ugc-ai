@@ -155,7 +155,14 @@ export default function ImagesPage() {
           <div className="text-center py-16 text-gray-500">
             <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-lg font-medium">No images yet</p>
-            <p className="text-sm">Generate your first image above!</p>
+            <p className="text-sm mb-4">Use the generator above to create your first AI image.</p>
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <ImageIcon className="w-4 h-4" />
+              Generate Your First Image
+            </button>
           </div>
         ) : (
           <>

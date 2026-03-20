@@ -259,9 +259,17 @@ export default function ExplorePage() {
       {filteredItems.length === 0 && !loading && (
         <div className="text-center py-20">
           <Compass className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-500">
+          <p className="text-gray-500 mb-4">
             {scope === 'my' ? 'No content yet. Start generating to see your work here!' : 'No community content found yet.'}
           </p>
+          {scope === 'my' && (
+            <a
+              href="/generate"
+              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              Create Something
+            </a>
+          )}
         </div>
       )}
 

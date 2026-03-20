@@ -12,6 +12,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { isR2Configured, uploadToR2 } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -175,6 +176,11 @@ async function saveBase64Locally(dataUrl: string): Promise<string> {
   const buffer = Buffer.from(base64Data, 'base64')
   const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg'
   const filename = `src_${crypto.randomUUID().slice(0, 8)}.${ext}`
+
+  if (isR2Configured) {
+    return uploadToR2(`image-edit/${filename}`, buffer)
+  }
+
   const filePath = path.join(OUTPUT_DIR, filename)
   await writeFile(filePath, buffer)
 
@@ -256,6 +262,11 @@ async function downloadAndSave(url: string, prefix: string): Promise<string> {
   if (buf.length < 1000) throw new Error('Downloaded file too small — likely an error page')
   const ext = url.includes('.png') ? 'png' : 'jpg'
   const filename = `${prefix}_${crypto.randomUUID().slice(0, 8)}.${ext}`
+
+  if (isR2Configured) {
+    return uploadToR2(`image-edit/${filename}`, buf)
+  }
+
   const outputPath = path.join(OUTPUT_DIR, filename)
   await writeFile(outputPath, buf)
 

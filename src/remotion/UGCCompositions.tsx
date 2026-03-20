@@ -12,7 +12,6 @@ import {
 import { AnimatedCaption } from './components/AnimatedCaption'
 import { HookText } from './components/HookText'
 import { SceneBackground } from './components/SceneBackground'
-import { AvatarOverlay } from './components/AvatarOverlay'
 import { ProgressBar, CTAOverlay, Watermark } from './components/Overlays'
 
 /**
@@ -47,15 +46,6 @@ export interface UGCVideoProps {
   captionStyle?: 'karaoke' | 'word-by-word' | 'fade'
   hookStyle?: 'pop' | 'typewriter' | 'slide'
   colorAccent?: string
-  // Avatar / Talking Head settings
-  avatarFaceUrl?: string     // face image for static overlay
-  avatarVideoUrl?: string    // talking head video (D-ID/SadTalker)
-  avatarIsVideo?: boolean    // whether avatar source is video
-  avatarPosition?: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
-  avatarShape?: 'circle' | 'rounded' | 'rectangle'
-  avatarSize?: 'small' | 'medium' | 'large'
-  /** Custom label shown under the avatar (e.g. brand name) */
-  avatarLabel?: string
 }
 
 /**
@@ -102,13 +92,6 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
   captionStyle = 'karaoke',
   hookStyle = 'pop',
   colorAccent = '#A855F7',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'medium',
-  avatarLabel,
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
@@ -178,21 +161,6 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
         </>
       )}
 
-      {/* Avatar Overlay */}
-      {(avatarFaceUrl || avatarVideoUrl) && (
-        <AvatarOverlay
-          faceImageUrl={avatarFaceUrl}
-          avatarVideoUrl={avatarVideoUrl}
-          isVideo={avatarIsVideo}
-          position={avatarPosition}
-          shape={avatarShape}
-          size={avatarSize}
-          wordBoundaries={wordBoundaries}
-          startFrame={0}
-          creatorLabel={avatarLabel}
-        />
-      )}
-
       {/* CTA at the end */}
       <CTAOverlay
         text={cta}
@@ -217,13 +185,6 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
   sceneImages = [],
   wordBoundaries = [],
   colorAccent = '#EC4899',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'medium',
-  avatarLabel,
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
@@ -274,21 +235,6 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
         </Sequence>
       ))}
 
-      {/* Avatar Overlay */}
-      {(avatarFaceUrl || avatarVideoUrl) && (
-        <AvatarOverlay
-          faceImageUrl={avatarFaceUrl}
-          avatarVideoUrl={avatarVideoUrl}
-          isVideo={avatarIsVideo}
-          position={avatarPosition}
-          shape={avatarShape}
-          size={avatarSize}
-          wordBoundaries={wordBoundaries}
-          startFrame={0}
-          creatorLabel={avatarLabel}
-        />
-      )}
-
       {/* CTA */}
       <CTAOverlay
         text={cta}
@@ -312,12 +258,6 @@ export const SplitScreenVideo: React.FC<UGCVideoProps> = ({
   sceneImages = [],
   wordBoundaries = [],
   colorAccent = '#3B82F6',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const { fps, durationInFrames, width, height } = useVideoConfig()
   const hookFrames = Math.floor(fps * 2.5)
@@ -416,12 +356,6 @@ export const CountdownVideo: React.FC<UGCVideoProps> = ({
   backgroundImage,
   sceneImages = [],
   colorAccent = '#F59E0B',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames } = useVideoConfig()
@@ -564,12 +498,6 @@ export const TestimonialVideo: React.FC<UGCVideoProps> = ({
   sceneImages = [],
   wordBoundaries = [],
   colorAccent = '#10B981',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'medium',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames, height } = useVideoConfig()
@@ -777,12 +705,6 @@ export const BeforeAfterVideo: React.FC<UGCVideoProps> = ({
   backgroundImage,
   sceneImages = [],
   colorAccent = '#EF4444',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames, width, height } = useVideoConfig()
@@ -964,12 +886,6 @@ export const ProductShowcaseVideo: React.FC<UGCVideoProps> = ({
   backgroundImage,
   sceneImages = [],
   colorAccent = '#8B5CF6',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames, height } = useVideoConfig()
@@ -1188,12 +1104,6 @@ export const CinematicVideo: React.FC<UGCVideoProps> = ({
   wordBoundaries = [],
   captionStyle = 'fade',
   colorAccent = '#D4AF37',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'medium',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames, height } = useVideoConfig()
@@ -1331,12 +1241,6 @@ export const NeonVideo: React.FC<UGCVideoProps> = ({
   backgroundImage,
   sceneImages = [],
   colorAccent = '#00F0FF',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames } = useVideoConfig()
@@ -1488,12 +1392,6 @@ export const MinimalistVideo: React.FC<UGCVideoProps> = ({
   backgroundImage,
   sceneImages = [],
   colorAccent = '#111111',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames } = useVideoConfig()
@@ -1620,12 +1518,6 @@ export const MagazineVideo: React.FC<UGCVideoProps> = ({
   backgroundImage,
   sceneImages = [],
   colorAccent = '#C8102E',
-  avatarFaceUrl,
-  avatarVideoUrl,
-  avatarIsVideo = false,
-  avatarPosition = 'bottom-right',
-  avatarShape = 'circle',
-  avatarSize = 'small',
 }) => {
   const frame = useCurrentFrame()
   const { fps, durationInFrames, width } = useVideoConfig()

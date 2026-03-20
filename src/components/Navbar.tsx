@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon, Palette, Wand2, Compass, Megaphone, Film } from 'lucide-react'
+import { Zap, LayoutDashboard, PenSquare, BookMarked, Settings, LogOut, Video, Calendar, BarChart3, Menu, X, ImageIcon, Compass, Megaphone, Film } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 
@@ -24,14 +24,12 @@ const navSections = [
     items: [
       { href: '/video', label: 'Create Video', icon: Video },
       { href: '/text-to-video', label: 'Text to Video', icon: Film },
-      { href: '/video-to-video', label: 'Style Transfer', icon: Palette },
     ],
   },
   {
     label: 'Images',
     items: [
       { href: '/images', label: 'AI Images', icon: ImageIcon },
-      { href: '/image-editor', label: 'Image Editor', icon: Wand2 },
     ],
   },
   {

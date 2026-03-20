@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Zap, ArrowRight, Check, TrendingUp, Sparkles, Target, Video, ImageIcon, Wand2 } from 'lucide-react'
+import { Zap, ArrowRight, Check, TrendingUp, Sparkles, Target, Video, ImageIcon } from 'lucide-react'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -98,7 +98,7 @@ export default function LandingPage() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: '1', icon: Wand2, title: 'Describe your product', desc: 'Enter your product name, audience, and platform. Our AI handles the rest.' },
+              { step: '1', icon: Target, title: 'Describe your product', desc: 'Enter your product name, audience, and platform. Our AI handles the rest.' },
               { step: '2', icon: Sparkles, title: 'AI generates everything', desc: 'Get 10 hooks, a full script, captions, hashtags, CTAs, and A/B variants instantly.' },
               { step: '3', icon: Video, title: 'Create & export video', desc: 'Turn your script into a polished video with AI voices, stock footage, and captions.' },
             ].map(s => (
@@ -127,10 +127,8 @@ export default function LandingPage() {
               { icon: Video, label: 'AI Videos', color: 'pink' },
               { icon: ImageIcon, label: 'AI Images', color: 'emerald' },
               { icon: Target, label: 'Ad Campaigns', color: 'blue' },
-              { icon: Wand2, label: 'Image Editing', color: 'amber' },
               { icon: TrendingUp, label: 'Analytics', color: 'cyan' },
               { icon: Zap, label: 'Text to Video', color: 'rose' },
-              { icon: ArrowRight, label: 'Style Transfer', color: 'indigo' },
             ].map(cap => (
               <div key={cap.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center hover:border-gray-700 transition-colors">
                 <cap.icon className="w-6 h-6 mx-auto mb-2 text-gray-300" />

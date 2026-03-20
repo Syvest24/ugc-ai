@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error) {
-    logger.error('TTS error', { error: error instanceof Error ? error.message : String(error) })
-    return serverError('Voice generation failed. Please try again.')
+    const msg = error instanceof Error ? error.message : String(error)
+    logger.error('TTS error', { error: msg })
+    return serverError(`Voice generation failed: ${msg.includes('timed out') ? 'Connection timed out — try again.' : 'Please try again.'}`)
   }
 }

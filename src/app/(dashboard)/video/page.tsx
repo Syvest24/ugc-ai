@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  Video,
+  Video as VideoIcon,
   Image,
   Loader2,
   Palette,
@@ -11,6 +11,7 @@ import {
   Zap,
   ArrowLeft,
   User,
+  Film,
 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -51,6 +52,7 @@ export default function VideoPage() {
   const [stockClips, setStockClips] = useState<StockClip[]>([])
   const [selectedClip, setSelectedClip] = useState<StockClip | null>(null)
   const [footageLoading, setFootageLoading] = useState(false)
+  const [footageType, setFootageType] = useState<'image' | 'video'>('image')
 
   // AI generated images as backgrounds
   const [aiImages, setAiImages] = useState<Array<{ id: string; imageUrl: string; prompt: string }>>([])
@@ -237,12 +239,14 @@ export default function VideoPage() {
     }
   }
 
-  const handleSearchFootage = async () => {
+  const handleSearchFootage = async (type?: 'image' | 'video') => {
+    const searchType = type || footageType
     if (!productName.trim()) {
       toast.error('Enter product name first')
       return
     }
     setFootageLoading(true)
+    setFootageType(searchType)
     try {
       const res = await fetch('/api/video/footage', {
         method: 'POST',
@@ -251,7 +255,7 @@ export default function VideoPage() {
           productName,
           productDescription,
           platform,
-          type: 'image',
+          type: searchType,
         }),
       })
       const data = await res.json()
@@ -261,7 +265,7 @@ export default function VideoPage() {
       }
       setStockClips(data.data?.clips || [])
       if (data.data?.clips?.length) {
-        toast.success(`Found ${data.data.clips.length} stock images!`)
+        toast.success(`Found ${data.data.clips.length} stock ${searchType === 'video' ? 'videos' : 'images'}!`)
       } else {
         toast.error('No footage found. Try different product details.')
       }
@@ -569,18 +573,31 @@ export default function VideoPage() {
           {sectionHeader('Background', 3, <Image className="w-4 h-4 text-violet-400" />)}
 
           <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
-              onClick={handleSearchFootage}
+              onClick={() => handleSearchFootage('image')}
               disabled={footageLoading || !productName.trim()}
               className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-700"
             >
-              {footageLoading ? (
+              {footageLoading && footageType === 'image' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Image className="w-4 h-4" />
               )}
-              {footageLoading ? 'Searching...' : 'Search Stock Images'}
+              {footageLoading && footageType === 'image' ? 'Searching...' : 'Stock Images'}
+            </button>
+
+            <button
+              onClick={() => handleSearchFootage('video')}
+              disabled={footageLoading || !productName.trim()}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-700"
+            >
+              {footageLoading && footageType === 'video' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Film className="w-4 h-4" />
+              )}
+              {footageLoading && footageType === 'video' ? 'Searching...' : 'Stock Videos'}
             </button>
 
             <button
@@ -693,7 +710,7 @@ export default function VideoPage() {
 
             {stockClips.length > 0 && (
               <div>
-                <p className="text-sm text-gray-300 mb-2">Select a background image:</p>
+                <p className="text-sm text-gray-300 mb-2">Select a background {footageType === 'video' ? 'video' : 'image'}:</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   <button
                     onClick={() => { setSelectedClip(null); setAiImageUrl(null) }}
@@ -712,23 +729,40 @@ export default function VideoPage() {
                     <button
                       key={clip.id}
                       onClick={() => { setSelectedClip(clip); setAiImageUrl(null) }}
-                      className={`aspect-[9/16] rounded-lg border-2 overflow-hidden transition-all ${
+                      className={`aspect-[9/16] rounded-lg border-2 overflow-hidden transition-all relative ${
                         selectedClip?.id === clip.id
                           ? 'border-violet-500 ring-2 ring-violet-500/30'
                           : 'border-gray-700 hover:border-gray-600'
                       }`}
                     >
-                      <img
-                        src={clip.previewUrl}
-                        alt="Stock"
-                        className="w-full h-full object-cover"
-                      />
+                      {clip.type === 'video' ? (
+                        <video
+                          src={clip.previewUrl || clip.url}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          playsInline
+                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
+                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0 }}
+                        />
+                      ) : (
+                        <img
+                          src={clip.previewUrl}
+                          alt="Stock"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                      {clip.type === 'video' && (
+                        <div className="absolute top-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                          {clip.duration ? `${clip.duration}s` : 'Video'}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
                 {selectedClip?.photographer && (
                   <p className="text-xs text-gray-500 mt-2">
-                    Photo by {selectedClip.photographer} on Pexels
+                    {selectedClip.type === 'video' ? 'Video' : 'Photo'} by {selectedClip.photographer} on Pexels
                   </p>
                 )}
               </div>
@@ -837,7 +871,7 @@ export default function VideoPage() {
                     className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all"
                     title={!ttsResult ? 'Generate voiceover first (Step 2)' : 'Create AI talking head'}
                   >
-                    {avatarLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Video className="w-3 h-3" />}
+                    {avatarLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <VideoIcon className="w-3 h-3" />}
                     {avatarLoading ? 'Creating...' : 'Create Talking Head (D-ID / SadTalker)'}
                   </button>
                 </div>

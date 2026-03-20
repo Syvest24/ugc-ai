@@ -49,6 +49,29 @@ export async function generateTTS(
   rate: string = '+0%',
   pitch: string = '+0Hz'
 ): Promise<TTSResult> {
+  // Retry up to 2 times for transient WebSocket failures
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[TTS] Retry attempt ${attempt + 1}/3`)
+        await new Promise(r => setTimeout(r, 1000 * attempt))
+      }
+      return await _generateTTSAttempt(text, voiceId, rate, pitch)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      console.warn(`[TTS] Attempt ${attempt + 1} failed:`, lastError.message)
+    }
+  }
+  throw lastError || new Error('TTS generation failed after 3 attempts')
+}
+
+async function _generateTTSAttempt(
+  text: string,
+  voiceId: VoiceId = 'jenny',
+  rate: string = '+0%',
+  pitch: string = '+0Hz'
+): Promise<TTSResult> {
   ensureDir(OUTPUT_DIR)
 
   console.log(`[TTS] Generating: voice=${voiceId}, rate=${rate}, text=${text.substring(0, 60)}...`)

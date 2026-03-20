@@ -93,18 +93,22 @@ export default function ImagesPage() {
 
   const handleDownload = useCallback(async (image: GeneratedImage) => {
     try {
-      const response = await fetch(image.imageUrl)
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
       a.download = `ugcforge-${image.id}.png`
+      if (image.imageUrl.startsWith('data:')) {
+        a.href = image.imageUrl
+      } else {
+        const response = await fetch(image.imageUrl)
+        const blob = await response.blob()
+        a.href = URL.createObjectURL(blob)
+      }
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      if (!image.imageUrl.startsWith('data:')) URL.revokeObjectURL(a.href)
     } catch {
-      toast.error('Download failed')
+      window.open(image.imageUrl, '_blank')
+      toast('Opened in new tab — right-click to save', { icon: 'ℹ️' })
     }
   }, [])
 

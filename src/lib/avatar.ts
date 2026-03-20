@@ -20,6 +20,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { isR2Configured, uploadToR2 } from './r2'
 
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.RAILWAY_ENVIRONMENT
 
@@ -498,18 +499,30 @@ export async function fetchAvatarFace(prompt: string, seed?: number): Promise<st
     const buffer = Buffer.from(await res.arrayBuffer())
     if (buffer.length < 1000) throw new Error('Image too small — likely an error')
 
+    const filename = `avatar-${crypto.randomUUID().slice(0, 8)}.jpg`
+
+    // Upload to R2 for reliable serving across environments
+    if (isR2Configured) {
+      try {
+        const r2Url = await uploadToR2(`avatars/${filename}`, buffer)
+        return r2Url
+      } catch (err) {
+        console.warn('[avatar] R2 upload failed, falling back:', err)
+      }
+    }
+
     if (!IS_SERVERLESS) {
       await mkdir(AVATAR_OUTPUT_DIR, { recursive: true })
-      const filename = `avatar-${crypto.randomUUID().slice(0, 8)}.jpg`
       const filePath = path.join(AVATAR_OUTPUT_DIR, filename)
       await writeFile(filePath, buffer)
       return `/generated/thumbnails/${filename}`
     }
 
-    // On serverless, return as data URI
-    const base64 = buffer.toString('base64')
-    const ext = ct.includes('png') ? 'png' : 'jpeg'
-    return `data:image/${ext};base64,${base64}`
+    // On serverless without R2, write to /tmp and serve via API route
+    const tmpDir = path.join('/tmp', 'generated', 'thumbnails')
+    await mkdir(tmpDir, { recursive: true })
+    await writeFile(path.join(tmpDir, filename), buffer)
+    return `/api/generated/thumbnails/${filename}`
   } catch (err) {
     console.warn('[avatar] Failed to fetch from Pollinations, using placeholder:', err instanceof Error ? err.message : err)
     // Return a simple placeholder SVG as data URI

@@ -110,19 +110,24 @@ export default function ImageGenerator({ onImageGenerated }: ImageGeneratorProps
   const handleDownload = useCallback(async () => {
     if (!result) return
     try {
-      const response = await fetch(result.imageUrl)
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
       a.download = `ugcforge-${result.id}.png`
+      if (result.imageUrl.startsWith('data:')) {
+        a.href = result.imageUrl
+      } else {
+        const response = await fetch(result.imageUrl)
+        const blob = await response.blob()
+        a.href = URL.createObjectURL(blob)
+      }
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      if (!result.imageUrl.startsWith('data:')) URL.revokeObjectURL(a.href)
       toast.success('Image downloaded!')
     } catch {
-      toast.error('Download failed')
+      // Fallback: open in new tab for manual save
+      window.open(result.imageUrl, '_blank')
+      toast('Opened in new tab — right-click to save', { icon: 'ℹ️' })
     }
   }, [result])
 
@@ -597,7 +602,12 @@ export default function ImageGenerator({ onImageGenerated }: ImageGeneratorProps
           </div>
           {/* Image info */}
           <div className="p-4 space-y-2">
-            <p className="text-sm text-gray-300 line-clamp-2">{result.prompt}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-300 line-clamp-2 flex-1">{result.prompt}</p>
+              <span className="flex items-center gap-1 text-xs text-emerald-400 shrink-0 ml-3">
+                <Star className="w-3 h-3" /> Saved to Gallery
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2 text-xs text-gray-500">
               <span className="px-2 py-0.5 rounded bg-gray-800">{result.provider}</span>
               <span className="px-2 py-0.5 rounded bg-gray-800">{result.model}</span>
@@ -627,14 +637,28 @@ export default function ImageGenerator({ onImageGenerated }: ImageGeneratorProps
                   className="w-full h-auto"
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <a
-                    href={img.imageUrl}
-                    download={`ugcforge-${img.id}.png`}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      try {
+                        const a = document.createElement('a')
+                        a.download = `ugcforge-${img.id}.png`
+                        if (img.imageUrl.startsWith('data:')) {
+                          a.href = img.imageUrl
+                        } else {
+                          const res = await fetch(img.imageUrl)
+                          a.href = URL.createObjectURL(await res.blob())
+                        }
+                        a.click()
+                      } catch {
+                        window.open(img.imageUrl, '_blank')
+                      }
+                    }}
                     className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
                     title="Download"
                   >
                     <Download className="w-4 h-4" />
-                  </a>
+                  </button>
                 </div>
                 <div className="p-2 text-xs text-gray-500">
                   {img.seed && <span>seed: {img.seed}</span>}

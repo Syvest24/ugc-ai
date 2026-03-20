@@ -18,7 +18,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Unknown preset: ${presetId}` }, { status: 404 })
   }
 
-  const localPath = await fetchAvatarFace(preset.prompt, preset.seed)
+  let localPath: string
+  try {
+    localPath = await fetchAvatarFace(preset.prompt, preset.seed)
+  } catch {
+    // Return a simple SVG placeholder when AI generation fails
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#374151"/><circle cx="256" cy="200" r="80" fill="#9CA3AF"/><ellipse cx="256" cy="420" rx="130" ry="100" fill="#9CA3AF"/></svg>`
+    return new NextResponse(svg, {
+      status: 200,
+      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=60' },
+    })
+  }
 
   // If it's a data URI (placeholder or serverless), redirect to it directly
   // Otherwise, redirect to the local file path

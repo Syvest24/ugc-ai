@@ -49,14 +49,10 @@ export async function searchStockVideos(
         .filter(f => f.quality === 'hd' || f.quality === 'sd')
         .sort((a, b) => (b.width || 0) - (a.width || 0))[0]
 
-      const previewFile = video.video_files
-        .filter(f => f.quality === 'sd')
-        .sort((a, b) => (a.width || 0) - (b.width || 0))[0]
-
       return {
         id: video.id,
         url: videoFile?.link || video.video_files[0]?.link || '',
-        previewUrl: previewFile?.link || video.image || '',
+        previewUrl: video.image || '',
         width: videoFile?.width || video.width,
         height: videoFile?.height || video.height,
         duration: video.duration,

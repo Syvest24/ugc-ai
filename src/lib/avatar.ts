@@ -190,6 +190,14 @@ async function generateWithDID(
   const apiKey = process.env.DID_API_KEY
   if (!apiKey) throw new Error('DID_API_KEY not configured')
 
+  // Validate face image URL — D-ID requires an HTTP(S) URL to a real image
+  if (!faceImageUrl.startsWith('http://') && !faceImageUrl.startsWith('https://') && !faceImageUrl.startsWith('/')) {
+    throw new Error('D-ID requires a publicly accessible image URL (jpg/jpeg/png). Data URIs and SVGs are not supported. Please upload a real face image or try generating the avatar again.')
+  }
+  if (faceImageUrl.startsWith('data:')) {
+    throw new Error('D-ID does not accept data URIs. The avatar face image must be a public URL ending in .jpg, .jpeg, or .png.')
+  }
+
   // Create a talk
   const createRes = await fetch('https://api.d-id.com/talks', {
     method: 'POST',
@@ -524,10 +532,8 @@ export async function fetchAvatarFace(prompt: string, seed?: number): Promise<st
     await writeFile(path.join(tmpDir, filename), buffer)
     return `/api/generated/thumbnails/${filename}`
   } catch (err) {
-    console.warn('[avatar] Failed to fetch from Pollinations, using placeholder:', err instanceof Error ? err.message : err)
-    // Return a simple placeholder SVG as data URI
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="%23374151"/><circle cx="256" cy="200" r="80" fill="%239CA3AF"/><ellipse cx="256" cy="420" rx="130" ry="100" fill="%239CA3AF"/></svg>`
-    return `data:image/svg+xml,${svg}`
+    console.warn('[avatar] Failed to fetch from Pollinations:', err instanceof Error ? err.message : err)
+    throw new Error('Avatar face generation failed — AI image service is currently unavailable. Please try again or paste a face image URL instead.')
   }
 }
 

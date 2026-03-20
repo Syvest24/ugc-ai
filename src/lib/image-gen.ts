@@ -83,8 +83,13 @@ async function saveImage(buffer: Buffer, filename: string): Promise<{ url: strin
 
   // Fallback: local filesystem (dev only)
   if (IS_SERVERLESS) {
-    // No R2 and serverless — return data URI as last resort
-    return { url: `data:image/png;base64,${buffer.toString('base64')}`, localPath: '' }
+    // No R2 and serverless — save to /tmp and serve via API
+    const fsMod = await import('fs')
+    const pathMod = await import('path')
+    const tmpDir = pathMod.join('/tmp', 'generated', 'generated-images')
+    if (!fsMod.existsSync(tmpDir)) fsMod.mkdirSync(tmpDir, { recursive: true })
+    fsMod.writeFileSync(pathMod.join(tmpDir, filename), buffer)
+    return { url: `/api/generated/generated-images/${filename}`, localPath: '' }
   }
 
   const fs = await import('fs')

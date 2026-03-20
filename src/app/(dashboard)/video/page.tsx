@@ -768,23 +768,11 @@ export default function VideoPage() {
                           : 'border-gray-700 hover:border-gray-600'
                       }`}
                     >
-                      {clip.type === 'video' ? (
-                        <video
-                          src={clip.previewUrl || clip.url}
-                          className="w-full h-full object-cover"
-                          muted
-                          loop
-                          playsInline
-                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0 }}
-                        />
-                      ) : (
-                        <img
-                          src={clip.previewUrl}
-                          alt="Stock"
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      <img
+                        src={clip.previewUrl}
+                        alt="Stock"
+                        className="w-full h-full object-cover"
+                      />
                       {clip.type === 'video' && (
                         <div className="absolute top-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
                           {clip.duration ? `${clip.duration}s` : 'Video'}

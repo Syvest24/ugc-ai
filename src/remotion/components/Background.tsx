@@ -2,10 +2,18 @@ import React from 'react'
 import {
   AbsoluteFill,
   Img,
+  OffthreadVideo,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion'
+
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|avi|mkv)(\?.*)?$/i
+const VIDEO_URL_PATTERNS = /videos\.pexels\.com\/video-files|video-files\//i
+
+function isVideoUrl(url: string): boolean {
+  return VIDEO_EXTENSIONS.test(url) || VIDEO_URL_PATTERNS.test(url)
+}
 
 interface BackgroundProps {
   type: 'gradient' | 'image' | 'video-placeholder'
@@ -41,18 +49,32 @@ export const Background: React.FC<BackgroundProps> = ({
     )
   }
 
-  if (type === 'image' && src) {
+  if ((type === 'image' || type === 'video-placeholder') && src) {
+    const useVideo = isVideoUrl(src)
     return (
       <AbsoluteFill>
-        <Img
-          src={src}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform: `scale(${scale})`,
-          }}
-        />
+        {useVideo ? (
+          <OffthreadVideo
+            src={src}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: `scale(${scale})`,
+            }}
+            muted
+          />
+        ) : (
+          <Img
+            src={src}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: `scale(${scale})`,
+            }}
+          />
+        )}
         <AbsoluteFill
           style={{
             backgroundColor: `rgba(0, 0, 0, ${overlay})`,

@@ -2,10 +2,18 @@ import React from 'react'
 import {
   AbsoluteFill,
   Img,
+  OffthreadVideo,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion'
+
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|avi|mkv)(\?.*)?$/i
+const VIDEO_URL_PATTERNS = /videos\.pexels\.com\/video-files|video-files\//i
+
+function isVideoUrl(url: string): boolean {
+  return VIDEO_EXTENSIONS.test(url) || VIDEO_URL_PATTERNS.test(url)
+}
 
 interface SceneBackgroundProps {
   /** Fallback single background image */
@@ -141,15 +149,28 @@ export const SceneBackground: React.FC<SceneBackgroundProps> = ({
 
           return (
             <AbsoluteFill key={i} style={{ opacity }}>
-              <Img
-                src={imgSrc}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transform: `scale(${scale})`,
-                }}
-              />
+              {isVideoUrl(imgSrc) ? (
+                <OffthreadVideo
+                  src={imgSrc}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transform: `scale(${scale})`,
+                  }}
+                  muted
+                />
+              ) : (
+                <Img
+                  src={imgSrc}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transform: `scale(${scale})`,
+                  }}
+                />
+              )}
             </AbsoluteFill>
           )
         })}
@@ -159,18 +180,31 @@ export const SceneBackground: React.FC<SceneBackgroundProps> = ({
     )
   }
 
-  // Single background image
+  // Single background image or video
   return (
     <AbsoluteFill>
-      <Img
-        src={currentImage}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale})`,
-        }}
-      />
+      {isVideoUrl(currentImage) ? (
+        <OffthreadVideo
+          src={currentImage}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `scale(${scale})`,
+          }}
+          muted
+        />
+      ) : (
+        <Img
+          src={currentImage}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `scale(${scale})`,
+          }}
+        />
+      )}
       <AbsoluteFill style={{ backgroundColor: `rgba(0, 0, 0, ${overlay})` }} />
     </AbsoluteFill>
   )

@@ -182,6 +182,14 @@ export async function POST(req: NextRequest) {
     }
     logger.error('Video render error', { error: error instanceof Error ? error.message : String(error) })
     done(500)
-    return serverError('Video rendering failed. Please try again.')
+    const detail = error instanceof Error ? error.message : String(error)
+    const userMsg = detail.includes('browser')
+      ? 'Video rendering failed: headless browser not available. The server may need a redeploy.'
+      : detail.includes('ENOSPC')
+        ? 'Video rendering failed: server disk space full. Try again later.'
+        : detail.includes('heap') || detail.includes('OOM')
+          ? 'Video rendering failed: server ran out of memory. Try a shorter video or draft quality.'
+          : `Video rendering failed: ${detail}`
+    return serverError(userMsg)
   }
 }

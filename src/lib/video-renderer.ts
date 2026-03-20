@@ -114,6 +114,16 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
 
     console.log(`[Render] Starting: template=${input.template}, duration=${effectiveDurationMs}ms, format=${format}, ${scaledWidth}x${scaledHeight}`)
 
+    // Ensure Remotion's headless browser is available before rendering
+    const { ensureBrowser } = await import('@remotion/renderer')
+    try {
+      await ensureBrowser()
+    } catch {
+      console.log('[Render] Browser not cached, downloading...')
+      const { execSync } = await import('child_process')
+      execSync('npx remotion browser ensure', { stdio: 'pipe', timeout: 120_000 })
+    }
+
     // Bundle the Remotion project
     const bundleLocation = await bundle({
       entryPoint: path.join(process.cwd(), 'src', 'remotion', 'index.ts'),

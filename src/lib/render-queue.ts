@@ -27,7 +27,7 @@ interface QueueStatus {
 }
 
 const MAX_CONCURRENT = parseInt(process.env.RENDER_MAX_CONCURRENT || '2', 10)
-const RENDER_TIMEOUT_MS = parseInt(process.env.RENDER_TIMEOUT_MS || '300000', 10) // 5 minutes
+const RENDER_TIMEOUT_MS = parseInt(process.env.RENDER_TIMEOUT_MS || '600000', 10) // 10 minutes
 const MAX_QUEUE_SIZE = parseInt(process.env.RENDER_MAX_QUEUE || '10', 10)
 
 class RenderQueue {

@@ -74,6 +74,10 @@ COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/src ./src
 
+# Copy Remotion's headless Chromium browser from builder cache
+# It's downloaded to /root/.cache/remotion/ during build
+COPY --from=builder /root/.cache/remotion /root/.cache/remotion
+
 EXPOSE 8080
 
 CMD ["npm", "start"]

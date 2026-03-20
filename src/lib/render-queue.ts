@@ -26,7 +26,7 @@ interface QueueStatus {
   totalFailed: number
 }
 
-const MAX_CONCURRENT = parseInt(process.env.RENDER_MAX_CONCURRENT || '2', 10)
+const MAX_CONCURRENT = parseInt(process.env.RENDER_MAX_CONCURRENT || '1', 10)
 const RENDER_TIMEOUT_MS = parseInt(process.env.RENDER_TIMEOUT_MS || '600000', 10) // 10 minutes
 const MAX_QUEUE_SIZE = parseInt(process.env.RENDER_MAX_QUEUE || '10', 10)
 

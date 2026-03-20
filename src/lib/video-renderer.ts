@@ -261,6 +261,18 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
       serveUrl: bundleLocation,
       outputLocation: outputPath,
       inputProps,
+      // Render one frame at a time to minimize memory usage on Railway
+      concurrency: 1,
+      // Chromium flags for Docker / low-memory environments
+      chromiumOptions: {
+        args: [
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--single-process',
+        ],
+      },
     }
 
     if (format === 'gif') {

@@ -1,4 +1,6 @@
-import { VOICE_OPTIONS } from '@/lib/constants'
+import { VOICE_OPTIONS, type TTSEngine } from '@/lib/constants'
+
+export type { TTSEngine }
 
 /* ─── Types ───────────────────────────────────────────────── */
 

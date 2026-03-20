@@ -19,7 +19,7 @@ import dynamic from 'next/dynamic'
 const VideoPreview = dynamic(() => import('@/components/VideoPreview'), { ssr: false })
 import {
   TEMPLATES, CAPTION_STYLES, HOOK_STYLES, VOICES,
-  type TTSResult, type StockClip,
+  type TTSResult, type StockClip, type TTSEngine,
 } from '@/lib/video-constants'
 import ScriptHookForm from '@/components/video/ScriptHookForm'
 import VoiceoverSection from '@/components/video/VoiceoverSection'
@@ -47,6 +47,8 @@ export default function VideoPage() {
   const [voiceRate, setVoiceRate] = useState('+0%')
   const [ttsResult, setTtsResult] = useState<TTSResult | null>(null)
   const [ttsLoading, setTtsLoading] = useState(false)
+  const [ttsEngine, setTtsEngine] = useState<TTSEngine>('edge')
+  const [googleAvailable, setGoogleAvailable] = useState(false)
 
   // Stock footage
   const [stockClips, setStockClips] = useState<StockClip[]>([])
@@ -150,6 +152,13 @@ export default function VideoPage() {
         }
       })
       .catch(() => {})
+    // Check TTS engine availability
+    fetch('/api/video/tts/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.data?.googleAvailable) setGoogleAvailable(true)
+      })
+      .catch(() => {})
   }, [contentId])
 
   // Handle one-click auto-flow
@@ -219,12 +228,17 @@ export default function VideoPage() {
           text: fullText,
           voice: selectedVoice,
           rate: voiceRate,
+          engine: ttsEngine,
         }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error || 'TTS failed')
         return
+      }
+      // Track Google availability from server response
+      if (data.data?.googleAvailable !== undefined) {
+        setGoogleAvailable(data.data.googleAvailable)
       }
       // Create blob URL from base64 for reliable client-side playback
       let previewUrl = data.data.audioUrl
@@ -583,6 +597,8 @@ export default function VideoPage() {
           scriptText={scriptText}
           onGenerateTTS={handleGenerateTTS}
           sectionHeader={sectionHeader}
+          ttsEngine={ttsEngine} setTtsEngine={setTtsEngine}
+          googleAvailable={googleAvailable}
         />
 
         {/* Step 3: Background */}

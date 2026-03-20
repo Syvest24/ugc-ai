@@ -57,19 +57,35 @@ export const GOAL_PROMPT_LABELS: Record<ContentGoal | string, string> = {
 }
 
 // ─── Voices (TTS) ─────────────────────────────────────────────────────
+export type TTSEngine = 'edge' | 'google'
+
 export const VOICE_OPTIONS = [
-  { id: 'jenny', name: 'Jenny', gender: 'Female', style: 'Warm & Friendly' },
-  { id: 'aria', name: 'Aria', gender: 'Female', style: 'Confident & Clear' },
-  { id: 'sara', name: 'Sara', gender: 'Female', style: 'Young & Energetic' },
-  { id: 'emma', name: 'Emma', gender: 'Female', style: 'British & Polished' },
-  { id: 'michelle', name: 'Michelle', gender: 'Female', style: 'Storyteller & Expressive' },
-  { id: 'ana', name: 'Ana', gender: 'Female', style: 'Soft & Gentle' },
-  { id: 'guy', name: 'Guy', gender: 'Male', style: 'Casual & Natural' },
-  { id: 'davis', name: 'Davis', gender: 'Male', style: 'Deep & Confident' },
-  { id: 'jason', name: 'Jason', gender: 'Male', style: 'Young & Dynamic' },
-  { id: 'ryan', name: 'Ryan', gender: 'Male', style: 'British & Professional' },
-  { id: 'tony', name: 'Tony', gender: 'Male', style: 'Conversational & Chill' },
-  { id: 'andrew', name: 'Andrew', gender: 'Male', style: 'Warm & Authoritative' },
+  // Edge TTS voices (free, no API key needed)
+  { id: 'jenny', name: 'Jenny', gender: 'Female', style: 'Warm & Friendly', engine: 'edge' as TTSEngine },
+  { id: 'aria', name: 'Aria', gender: 'Female', style: 'Confident & Clear', engine: 'edge' as TTSEngine },
+  { id: 'sara', name: 'Sara', gender: 'Female', style: 'Young & Energetic', engine: 'edge' as TTSEngine },
+  { id: 'emma', name: 'Emma', gender: 'Female', style: 'British & Polished', engine: 'edge' as TTSEngine },
+  { id: 'michelle', name: 'Michelle', gender: 'Female', style: 'Storyteller & Expressive', engine: 'edge' as TTSEngine },
+  { id: 'ana', name: 'Ana', gender: 'Female', style: 'Soft & Gentle', engine: 'edge' as TTSEngine },
+  { id: 'guy', name: 'Guy', gender: 'Male', style: 'Casual & Natural', engine: 'edge' as TTSEngine },
+  { id: 'davis', name: 'Davis', gender: 'Male', style: 'Deep & Confident', engine: 'edge' as TTSEngine },
+  { id: 'jason', name: 'Jason', gender: 'Male', style: 'Young & Dynamic', engine: 'edge' as TTSEngine },
+  { id: 'ryan', name: 'Ryan', gender: 'Male', style: 'British & Professional', engine: 'edge' as TTSEngine },
+  { id: 'tony', name: 'Tony', gender: 'Male', style: 'Conversational & Chill', engine: 'edge' as TTSEngine },
+  { id: 'andrew', name: 'Andrew', gender: 'Male', style: 'Warm & Authoritative', engine: 'edge' as TTSEngine },
+  // Google Cloud TTS WaveNet voices (requires GOOGLE_TTS_API_KEY)
+  { id: 'g-aria', name: 'Aria', gender: 'Female', style: 'Clear & Natural', engine: 'google' as TTSEngine },
+  { id: 'g-luna', name: 'Luna', gender: 'Female', style: 'Warm & Smooth', engine: 'google' as TTSEngine },
+  { id: 'g-ella', name: 'Ella', gender: 'Female', style: 'Young & Bright', engine: 'google' as TTSEngine },
+  { id: 'g-sophie', name: 'Sophie', gender: 'Female', style: 'British & Elegant', engine: 'google' as TTSEngine },
+  { id: 'g-chloe', name: 'Chloe', gender: 'Female', style: 'Soft & Friendly', engine: 'google' as TTSEngine },
+  { id: 'g-freya', name: 'Freya', gender: 'Female', style: 'Australian & Fresh', engine: 'google' as TTSEngine },
+  { id: 'g-james', name: 'James', gender: 'Male', style: 'Deep & Confident', engine: 'google' as TTSEngine },
+  { id: 'g-noah', name: 'Noah', gender: 'Male', style: 'Warm & Casual', engine: 'google' as TTSEngine },
+  { id: 'g-oliver', name: 'Oliver', gender: 'Male', style: 'British & Professional', engine: 'google' as TTSEngine },
+  { id: 'g-liam', name: 'Liam', gender: 'Male', style: 'Young & Dynamic', engine: 'google' as TTSEngine },
+  { id: 'g-ethan', name: 'Ethan', gender: 'Male', style: 'Storyteller & Rich', engine: 'google' as TTSEngine },
+  { id: 'g-jack', name: 'Jack', gender: 'Male', style: 'Australian & Energetic', engine: 'google' as TTSEngine },
 ] as const
 
 export type VoiceOption = (typeof VOICE_OPTIONS)[number]

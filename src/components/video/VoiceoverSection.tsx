@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Mic, Loader2, Volume2, RefreshCw } from 'lucide-react'
+import { Mic, Loader2, Volume2, RefreshCw, Sparkles } from 'lucide-react'
 import { VOICES, type TTSResult } from '@/lib/video-constants'
+import type { TTSEngine } from '@/lib/constants'
 
 interface VoiceoverSectionProps {
   selectedVoice: string
@@ -14,6 +15,9 @@ interface VoiceoverSectionProps {
   scriptText: string
   onGenerateTTS: () => void
   sectionHeader: (title: string, step: number, icon: React.ReactNode) => React.ReactNode
+  ttsEngine: TTSEngine
+  setTtsEngine: (e: TTSEngine) => void
+  googleAvailable: boolean
 }
 
 export default function VoiceoverSection({
@@ -21,6 +25,7 @@ export default function VoiceoverSection({
   voiceRate, setVoiceRate,
   ttsResult, ttsLoading, scriptText,
   onGenerateTTS, sectionHeader,
+  ttsEngine, setTtsEngine, googleAvailable,
 }: VoiceoverSectionProps) {
   const [audioError, setAudioError] = useState(false)
 
@@ -28,17 +33,73 @@ export default function VoiceoverSection({
     setAudioError(false)
   }, [ttsResult?.audioUrl])
 
+  const filteredVoices = VOICES.filter(v => v.engine === ttsEngine)
+
   return (
     <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
       {sectionHeader('AI Voiceover', 2, <Mic className="w-4 h-4 text-violet-400" />)}
 
       <div className="space-y-4">
+        {/* Engine Toggle */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Select Voice
+            Voice Engine
+          </label>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setTtsEngine('edge')
+                // Reset to a valid edge voice
+                if (selectedVoice.startsWith('g-')) setSelectedVoice('jenny')
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border text-sm font-medium transition-all ${
+                ttsEngine === 'edge'
+                  ? 'border-violet-500 bg-violet-600/10 text-violet-300'
+                  : 'border-gray-700 bg-gray-800/30 text-gray-400 hover:border-gray-600'
+              }`}
+            >
+              <Volume2 className="w-4 h-4" />
+              Edge TTS
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">Free</span>
+            </button>
+            <button
+              onClick={() => {
+                if (!googleAvailable) return
+                setTtsEngine('google')
+                // Reset to a valid google voice
+                if (!selectedVoice.startsWith('g-')) setSelectedVoice('g-aria')
+              }}
+              disabled={!googleAvailable}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border text-sm font-medium transition-all ${
+                ttsEngine === 'google'
+                  ? 'border-blue-500 bg-blue-600/10 text-blue-300'
+                  : googleAvailable
+                    ? 'border-gray-700 bg-gray-800/30 text-gray-400 hover:border-gray-600'
+                    : 'border-gray-800 bg-gray-900/30 text-gray-600 cursor-not-allowed'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Google WaveNet
+              {googleAvailable ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-400">HD</span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">Setup needed</span>
+              )}
+            </button>
+          </div>
+          {!googleAvailable && ttsEngine === 'edge' && (
+            <p className="text-xs text-gray-500 mt-1.5">
+              Set GOOGLE_TTS_API_KEY to unlock Google WaveNet voices (1M chars/month free)
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Select Voice {ttsEngine === 'google' && <span className="text-blue-400">(WaveNet)</span>}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {VOICES.map(voice => (
+            {filteredVoices.map(voice => (
               <button
                 key={voice.id}
                 onClick={() => setSelectedVoice(voice.id)}

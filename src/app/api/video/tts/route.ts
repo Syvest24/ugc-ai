@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     return apiSuccess({
       data: {
         audioUrl: result.audioPath,
+        audioBase64: result.audioBase64,
         duration: result.duration,
         wordBoundaries: result.wordBoundaries,
       },

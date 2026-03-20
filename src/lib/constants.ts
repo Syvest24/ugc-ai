@@ -62,10 +62,14 @@ export const VOICE_OPTIONS = [
   { id: 'aria', name: 'Aria', gender: 'Female', style: 'Confident & Clear' },
   { id: 'sara', name: 'Sara', gender: 'Female', style: 'Young & Energetic' },
   { id: 'emma', name: 'Emma', gender: 'Female', style: 'British & Polished' },
+  { id: 'michelle', name: 'Michelle', gender: 'Female', style: 'Storyteller & Expressive' },
+  { id: 'ana', name: 'Ana', gender: 'Female', style: 'Soft & Gentle' },
   { id: 'guy', name: 'Guy', gender: 'Male', style: 'Casual & Natural' },
   { id: 'davis', name: 'Davis', gender: 'Male', style: 'Deep & Confident' },
   { id: 'jason', name: 'Jason', gender: 'Male', style: 'Young & Dynamic' },
   { id: 'ryan', name: 'Ryan', gender: 'Male', style: 'British & Professional' },
+  { id: 'tony', name: 'Tony', gender: 'Male', style: 'Conversational & Chill' },
+  { id: 'andrew', name: 'Andrew', gender: 'Male', style: 'Warm & Authoritative' },
 ] as const
 
 export type VoiceOption = (typeof VOICE_OPTIONS)[number]

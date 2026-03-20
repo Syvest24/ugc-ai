@@ -13,22 +13,27 @@ export interface TTSWordBoundary {
 
 export interface TTSResult {
   audioPath: string
+  audioBase64?: string
   duration: number // total ms
   wordBoundaries: TTSWordBoundary[]
 }
 
 // UGC-friendly voices - natural, young, energetic
 export const VOICES = {
-  // Female
+  // Female — Natural & UGC-ready
   'jenny': 'en-US-JennyNeural',
   'aria': 'en-US-AriaNeural',
   'sara': 'en-US-SaraNeural',
   'emma': 'en-GB-SoniaNeural',
-  // Male
+  'michelle': 'en-US-MichelleNeural',
+  'ana': 'en-US-AnaNeural',
+  // Male — Natural & UGC-ready
   'guy': 'en-US-GuyNeural',
   'davis': 'en-US-DavisNeural',
   'jason': 'en-US-JasonNeural',
   'ryan': 'en-GB-RyanNeural',
+  'tony': 'en-US-TonyNeural',
+  'andrew': 'en-US-AndrewNeural',
 } as const
 
 export type VoiceId = keyof typeof VOICES
@@ -40,6 +45,22 @@ const OUTPUT_DIR = IS_SERVERLESS
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
+  }
+}
+
+function validateMP3(filePath: string): boolean {
+  try {
+    const fd = fs.openSync(filePath, 'r')
+    const header = Buffer.alloc(4)
+    fs.readSync(fd, header, 0, 4, 0)
+    fs.closeSync(fd)
+    // ID3v2 tag header
+    if (header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33) return true
+    // MPEG audio frame sync
+    if (header[0] === 0xff && (header[1] & 0xe0) === 0xe0) return true
+    return false
+  } catch {
+    return false
   }
 }
 
@@ -128,21 +149,30 @@ async function _generateTTSAttempt(
     writeStream.on('finish', async () => {
       tts.close()
 
-      // Verify audio file has content
+      // Verify audio file has content and valid format
       const stat = fs.statSync(audioPath)
       console.log(`[TTS] Audio file created: ${audioPath} (${(stat.size / 1024).toFixed(1)}KB, ${wordBoundaries.length} word boundaries)`)
-      if (stat.size === 0) {
-        reject(new Error('TTS generated an empty audio file'))
+      if (stat.size < 1024) {
+        reject(new Error(`TTS generated too-small audio file (${stat.size} bytes)`))
         return
       }
+      if (!validateMP3(audioPath)) {
+        reject(new Error('TTS generated invalid audio data (not a valid MP3)'))
+        return
+      }
+
+      // Read audio for client-side preview playback
+      const audioBuffer = fs.readFileSync(audioPath)
+      const audioBase64 = audioBuffer.length < 2 * 1024 * 1024
+        ? audioBuffer.toString('base64')
+        : undefined
 
       // Upload to R2 if configured
       let servePath: string
       if (isR2Configured) {
         try {
-          const buffer = fs.readFileSync(audioPath)
           const r2Key = `audio/${id}.mp3`
-          servePath = await uploadToR2(r2Key, buffer)
+          servePath = await uploadToR2(r2Key, audioBuffer)
         } catch (err) {
           console.warn('[TTS] R2 upload failed, falling back to local serve:', err)
           servePath = IS_SERVERLESS
@@ -157,6 +187,7 @@ async function _generateTTSAttempt(
 
       resolve({
         audioPath: servePath,
+        audioBase64,
         duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
         wordBoundaries,
       })
@@ -180,11 +211,14 @@ async function _generateTTSAttempt(
         const stat = fs.statSync(audioPath)
         if (stat.size > 0) {
           console.warn(`[TTS] Timeout but partial audio saved (${(stat.size / 1024).toFixed(1)}KB)`)
+          const audioBuffer = fs.readFileSync(audioPath)
+          const audioBase64 = audioBuffer.length < 2 * 1024 * 1024
+            ? audioBuffer.toString('base64')
+            : undefined
           let servePath: string
           if (isR2Configured) {
             try {
-              const buffer = fs.readFileSync(audioPath)
-              servePath = await uploadToR2(`audio/${id}.mp3`, buffer)
+              servePath = await uploadToR2(`audio/${id}.mp3`, audioBuffer)
             } catch {
               servePath = IS_SERVERLESS
                 ? `/api/generated/audio/${id}.mp3`
@@ -197,6 +231,7 @@ async function _generateTTSAttempt(
           }
           resolve({
             audioPath: servePath,
+            audioBase64,
             duration: lastEndMs > 0 ? lastEndMs : estimateDuration(text),
             wordBoundaries,
           })

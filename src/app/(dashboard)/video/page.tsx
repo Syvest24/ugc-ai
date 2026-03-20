@@ -226,8 +226,25 @@ export default function VideoPage() {
         toast.error(data.error || 'TTS failed')
         return
       }
+      // Create blob URL from base64 for reliable client-side playback
+      let previewUrl = data.data.audioUrl
+      if (data.data.audioBase64) {
+        try {
+          const binary = atob(data.data.audioBase64)
+          const bytes = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+          previewUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }))
+        } catch {
+          // Fall back to server URL
+        }
+      }
+      // Revoke previous blob URL if any
+      if (ttsResult?.audioUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(ttsResult.audioUrl)
+      }
       setTtsResult({
-        audioUrl: data.data.audioUrl,
+        audioUrl: previewUrl,
+        serverAudioUrl: data.data.audioUrl,
         duration: data.data.duration,
         wordBoundaries: data.data.wordBoundaries,
       })
@@ -378,7 +395,7 @@ export default function VideoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           faceImageUrl: avatarFaceUrl,
-          audioUrl: ttsResult.audioUrl,
+          audioUrl: ttsResult.serverAudioUrl || ttsResult.audioUrl,
           durationMs: ttsResult.duration,
         }),
       })
@@ -429,7 +446,7 @@ export default function VideoPage() {
           hook: hookText,
           scriptLines,
           cta: ctaText,
-          audioSrc: ttsResult?.audioUrl,
+          audioSrc: ttsResult?.serverAudioUrl || ttsResult?.audioUrl,
           backgroundImage: aiImageUrl || selectedClip?.url,
           sceneImages: sceneImages.filter(Boolean),
           wordBoundaries: ttsResult?.wordBoundaries,

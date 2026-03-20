@@ -1,6 +1,7 @@
 'use client'
 
-import { Mic, Loader2, Volume2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Mic, Loader2, Volume2, RefreshCw } from 'lucide-react'
 import { VOICES, type TTSResult } from '@/lib/video-constants'
 
 interface VoiceoverSectionProps {
@@ -21,6 +22,12 @@ export default function VoiceoverSection({
   ttsResult, ttsLoading, scriptText,
   onGenerateTTS, sectionHeader,
 }: VoiceoverSectionProps) {
+  const [audioError, setAudioError] = useState(false)
+
+  useEffect(() => {
+    setAudioError(false)
+  }, [ttsResult?.audioUrl])
+
   return (
     <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
       {sectionHeader('AI Voiceover', 2, <Mic className="w-4 h-4 text-violet-400" />)}
@@ -82,16 +89,44 @@ export default function VoiceoverSection({
         </div>
 
         {ttsResult && (
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-green-400">✓ Voiceover Ready</span>
-              <span className="text-xs text-gray-400">
-                {(ttsResult.duration / 1000).toFixed(1)}s · {ttsResult.wordBoundaries.length} words
-              </span>
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              {audioError ? (
+                <span className="text-sm font-medium text-red-400">Audio failed to load</span>
+              ) : (
+                <span className="text-sm font-medium text-green-400">✓ Voiceover Ready</span>
+              )}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">
+                  {(ttsResult.duration / 1000).toFixed(1)}s · {ttsResult.wordBoundaries.length} words
+                </span>
+                <button
+                  onClick={onGenerateTTS}
+                  disabled={ttsLoading}
+                  className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 disabled:opacity-50 transition-colors"
+                  title="Regenerate voiceover"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  {audioError ? 'Retry' : 'Redo'}
+                </button>
+              </div>
             </div>
-            <audio controls className="w-full h-10" src={ttsResult.audioUrl}>
-              <track kind="captions" />
-            </audio>
+            {!audioError && (
+              <audio
+                controls
+                preload="auto"
+                className="w-full h-10"
+                src={ttsResult.audioUrl}
+                onError={() => setAudioError(true)}
+              >
+                <track kind="captions" />
+              </audio>
+            )}
+            {audioError && (
+              <p className="text-xs text-gray-500">
+                The audio couldn&apos;t be played. Click Retry to regenerate.
+              </p>
+            )}
           </div>
         )}
       </div>

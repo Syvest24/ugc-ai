@@ -4,6 +4,7 @@ import { VOICE_OPTIONS } from '@/lib/constants'
 
 export interface TTSResult {
   audioUrl: string
+  serverAudioUrl: string
   duration: number
   wordBoundaries: { text: string; startMs: number; endMs: number }[]
 }

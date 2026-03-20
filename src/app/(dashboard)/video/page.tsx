@@ -11,6 +11,8 @@ import {
   ArrowLeft,
   Film,
   User,
+  Upload,
+  Link2,
 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -76,6 +78,10 @@ export default function VideoPage() {
   const [avatarLoading, setAvatarLoading] = useState(false)
   const [avatarEnabled, setAvatarEnabled] = useState(false)
   const [avatarProvider, setAvatarProvider] = useState<'sadtalker' | 'wav2lip' | 'did' | 'static'>('sadtalker')
+  const [avatarFaceTab, setAvatarFaceTab] = useState<'upload' | 'ai' | 'url'>('upload')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarAiImages, setAvatarAiImages] = useState<Array<{ id: string; imageUrl: string; prompt: string }>>([])
+  const [avatarAiLoading, setAvatarAiLoading] = useState(false)
 
   // Video settings
   const [selectedTemplate, setSelectedTemplate] = useState('CaptionStyle')
@@ -365,6 +371,52 @@ export default function VideoPage() {
       toast.error('Failed to generate scene backgrounds', { id: 'scenes' })
     } finally {
       setScenesLoading(false)
+    }
+  }
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPG, PNG, or WebP)')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large. Maximum 10 MB.')
+      return
+    }
+    setAvatarUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/video/avatar/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Upload failed')
+        return
+      }
+      setAvatarFaceUrl(data.data.imageUrl)
+      toast.success('Face image uploaded!')
+    } catch {
+      toast.error('Failed to upload image')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  const handleLoadAvatarAiImages = async () => {
+    setAvatarAiLoading(true)
+    try {
+      const res = await fetch('/api/image?limit=20')
+      const data = await res.json()
+      if (data.success && data.data?.length) {
+        setAvatarAiImages(data.data)
+        toast.success(`Found ${data.data.length} AI-generated images`)
+      } else {
+        toast.error('No AI images found. Generate some in the Images page first.')
+      }
+    } catch {
+      toast.error('Failed to load AI images')
+    } finally {
+      setAvatarAiLoading(false)
     }
   }
 
@@ -814,17 +866,123 @@ export default function VideoPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Face Image URL</label>
-                  <input
-                    type="url"
-                    value={avatarFaceUrl}
-                    onChange={e => setAvatarFaceUrl(e.target.value)}
-                    placeholder="https://example.com/face-photo.jpg"
-                    className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors placeholder-gray-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Provide a public URL of a real face photo (front-facing, good lighting). D-ID will animate it to match the voiceover.
-                  </p>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Face Image</label>
+                  {/* Tab selector */}
+                  <div className="flex gap-1 mb-3 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
+                    {([
+                      { id: 'upload' as const, label: 'Upload', icon: <Upload className="w-3.5 h-3.5" /> },
+                      { id: 'ai' as const, label: 'AI Images', icon: <Sparkles className="w-3.5 h-3.5" /> },
+                      { id: 'url' as const, label: 'Paste URL', icon: <Link2 className="w-3.5 h-3.5" /> },
+                    ]).map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setAvatarFaceTab(tab.id)}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-all ${
+                          avatarFaceTab === tab.id
+                            ? 'bg-violet-600 text-white shadow-sm'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Upload tab */}
+                  {avatarFaceTab === 'upload' && (
+                    <div className="space-y-3">
+                      <label
+                        className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all ${
+                          avatarUploading ? 'border-violet-500/50 bg-violet-600/5' : 'border-gray-600 hover:border-violet-500/50 hover:bg-gray-800/30'
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (file) handleAvatarUpload(file)
+                          }}
+                          disabled={avatarUploading}
+                        />
+                        {avatarUploading ? (
+                          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+                        ) : (
+                          <Upload className="w-8 h-8 text-gray-400" />
+                        )}
+                        <span className="text-sm text-gray-400">
+                          {avatarUploading ? 'Uploading...' : 'Click to upload a face photo'}
+                        </span>
+                        <span className="text-xs text-gray-500">JPG, PNG, or WebP — max 10 MB</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* AI Images tab */}
+                  {avatarFaceTab === 'ai' && (
+                    <div className="space-y-3">
+                      {avatarAiImages.length === 0 && (
+                        <button
+                          onClick={handleLoadAvatarAiImages}
+                          disabled={avatarAiLoading}
+                          className="flex items-center gap-2 bg-violet-700/30 hover:bg-violet-700/50 disabled:opacity-50 text-violet-300 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-violet-600/40 w-full justify-center"
+                        >
+                          {avatarAiLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                          {avatarAiLoading ? 'Loading...' : 'Load My AI Images'}
+                        </button>
+                      )}
+                      {avatarAiImages.length > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-2">Select a face image from your AI generations:</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-64 overflow-y-auto">
+                            {avatarAiImages.map(img => (
+                              <button
+                                key={img.id}
+                                onClick={() => setAvatarFaceUrl(img.imageUrl)}
+                                className={`aspect-square rounded-lg border-2 overflow-hidden transition-all ${
+                                  avatarFaceUrl === img.imageUrl
+                                    ? 'border-violet-500 ring-2 ring-violet-500/30'
+                                    : 'border-gray-700 hover:border-gray-500'
+                                }`}
+                                title={img.prompt}
+                              >
+                                <img src={img.imageUrl} alt={img.prompt} className="w-full h-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={handleLoadAvatarAiImages}
+                            disabled={avatarAiLoading}
+                            className="mt-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                          >
+                            {avatarAiLoading ? 'Refreshing...' : 'Refresh images'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* URL tab */}
+                  {avatarFaceTab === 'url' && (
+                    <div>
+                      <input
+                        type="url"
+                        value={avatarFaceUrl}
+                        onChange={e => setAvatarFaceUrl(e.target.value)}
+                        placeholder="https://example.com/face-photo.jpg"
+                        className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors placeholder-gray-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Paste a public URL of a face photo (front-facing, good lighting).
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {avatarFaceUrl && avatarProvider !== 'static' && (

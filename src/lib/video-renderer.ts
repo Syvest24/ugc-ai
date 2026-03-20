@@ -46,6 +46,14 @@ export interface VideoRenderInput {
   aspectRatio?: '9:16' | '1:1' | '16:9' | '4:5'
   quality?: 'draft' | 'standard' | 'high'
   format?: 'mp4' | 'gif'
+  // Avatar / Talking Head
+  avatarFaceUrl?: string
+  avatarVideoUrl?: string
+  avatarIsVideo?: boolean
+  avatarPosition?: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
+  avatarShape?: 'circle' | 'rounded' | 'rectangle'
+  avatarSize?: 'small' | 'medium' | 'large'
+  avatarLabel?: string
 }
 
 export interface VideoRenderOutput {
@@ -158,6 +166,47 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
       }
     }
 
+    // Resolve avatar video: download from R2 if needed and copy into bundle
+    let resolvedAvatarVideoUrl = input.avatarVideoUrl
+    if (resolvedAvatarVideoUrl && input.avatarIsVideo) {
+      let absoluteAvatarPath: string | null = null
+
+      const r2Key = getR2KeyFromUrl(resolvedAvatarVideoUrl)
+      if (isR2Configured && r2Key) {
+        try {
+          const avatarBuffer = await downloadFromR2(r2Key)
+          const avatarFilename = path.basename(r2Key)
+          absoluteAvatarPath = path.join('/tmp', 'generated', 'video', avatarFilename)
+          ensureDir(path.dirname(absoluteAvatarPath))
+          fs.writeFileSync(absoluteAvatarPath, avatarBuffer)
+          console.log(`[Render] Downloaded avatar video from R2: ${r2Key}`)
+        } catch (err) {
+          console.warn(`[Render] Failed to download avatar video from R2: ${err}`)
+        }
+      }
+
+      if (!absoluteAvatarPath) {
+        if (resolvedAvatarVideoUrl.startsWith('/api/generated/')) {
+          const relativePart = resolvedAvatarVideoUrl.replace('/api/generated/', '')
+          absoluteAvatarPath = path.join('/tmp', 'generated', relativePart)
+        } else if (resolvedAvatarVideoUrl.startsWith('/generated/')) {
+          absoluteAvatarPath = path.join(process.cwd(), 'public', resolvedAvatarVideoUrl)
+        } else if (resolvedAvatarVideoUrl.startsWith('/tmp/') || resolvedAvatarVideoUrl.startsWith('/Users/') || resolvedAvatarVideoUrl.startsWith('/home/')) {
+          absoluteAvatarPath = resolvedAvatarVideoUrl
+        }
+      }
+
+      if (absoluteAvatarPath && fs.existsSync(absoluteAvatarPath)) {
+        const avatarFilename = path.basename(absoluteAvatarPath)
+        fs.copyFileSync(absoluteAvatarPath, path.join(bundleLocation, avatarFilename))
+        resolvedAvatarVideoUrl = `/${avatarFilename}`
+        console.log(`[Render] Copied avatar video to bundle: ${avatarFilename}`)
+      } else {
+        console.warn(`[Render] Avatar video file not found: ${absoluteAvatarPath || resolvedAvatarVideoUrl}`)
+        resolvedAvatarVideoUrl = undefined
+      }
+    }
+
     const inputProps = {
       hook: input.hook,
       scriptLines: input.scriptLines,
@@ -170,6 +219,14 @@ export async function renderVideo(input: VideoRenderInput, onProgress?: (progres
       captionStyle: input.captionStyle || 'karaoke',
       hookStyle: input.hookStyle || 'pop',
       colorAccent: input.colorAccent || '#A855F7',
+      // Avatar props
+      avatarFaceUrl: input.avatarFaceUrl,
+      avatarVideoUrl: resolvedAvatarVideoUrl,
+      avatarIsVideo: input.avatarIsVideo,
+      avatarPosition: input.avatarPosition || 'bottom-left',
+      avatarShape: input.avatarShape || 'circle',
+      avatarSize: input.avatarSize || 'medium',
+      avatarLabel: input.avatarLabel,
     }
 
     // Select composition with props

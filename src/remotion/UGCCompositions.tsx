@@ -13,6 +13,7 @@ import { AnimatedCaption } from './components/AnimatedCaption'
 import { HookText } from './components/HookText'
 import { SceneBackground } from './components/SceneBackground'
 import { ProgressBar, CTAOverlay, Watermark } from './components/Overlays'
+import { AvatarOverlay } from './components/AvatarOverlay'
 
 /**
  * Resolve audio source path for Remotion rendering.
@@ -46,6 +47,14 @@ export interface UGCVideoProps {
   captionStyle?: 'karaoke' | 'word-by-word' | 'fade'
   hookStyle?: 'pop' | 'typewriter' | 'slide'
   colorAccent?: string
+  // Avatar / Talking Head
+  avatarFaceUrl?: string
+  avatarVideoUrl?: string
+  avatarIsVideo?: boolean
+  avatarPosition?: 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
+  avatarShape?: 'circle' | 'rounded' | 'rectangle'
+  avatarSize?: 'small' | 'medium' | 'large'
+  avatarLabel?: string
 }
 
 /**
@@ -92,6 +101,13 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
   captionStyle = 'karaoke',
   hookStyle = 'pop',
   colorAccent = '#A855F7',
+  avatarFaceUrl,
+  avatarVideoUrl,
+  avatarIsVideo,
+  avatarPosition = 'bottom-left',
+  avatarShape = 'circle',
+  avatarSize = 'medium',
+  avatarLabel,
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
@@ -161,6 +177,22 @@ export const CaptionStyleVideo: React.FC<UGCVideoProps> = ({
         </>
       )}
 
+      {/* Avatar / Talking Head */}
+      {(avatarFaceUrl || avatarVideoUrl) && (
+        <AvatarOverlay
+          faceImageUrl={avatarFaceUrl}
+          avatarVideoUrl={avatarVideoUrl}
+          isVideo={avatarIsVideo}
+          position={avatarPosition}
+          shape={avatarShape}
+          size={avatarSize}
+          wordBoundaries={wordBoundaries}
+          startFrame={0}
+          endFrame={durationInFrames}
+          creatorLabel={avatarLabel}
+        />
+      )}
+
       {/* CTA at the end */}
       <CTAOverlay
         text={cta}
@@ -185,6 +217,13 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
   sceneImages = [],
   wordBoundaries = [],
   colorAccent = '#EC4899',
+  avatarFaceUrl,
+  avatarVideoUrl,
+  avatarIsVideo,
+  avatarPosition = 'bottom-right',
+  avatarShape = 'circle',
+  avatarSize = 'medium',
+  avatarLabel,
 }) => {
   const { fps, durationInFrames } = useVideoConfig()
 
@@ -234,6 +273,22 @@ export const TextOnScreenVideo: React.FC<UGCVideoProps> = ({
           />
         </Sequence>
       ))}
+
+      {/* Avatar / Talking Head */}
+      {(avatarFaceUrl || avatarVideoUrl) && (
+        <AvatarOverlay
+          faceImageUrl={avatarFaceUrl}
+          avatarVideoUrl={avatarVideoUrl}
+          isVideo={avatarIsVideo}
+          position={avatarPosition}
+          shape={avatarShape}
+          size={avatarSize}
+          wordBoundaries={wordBoundaries}
+          startFrame={0}
+          endFrame={durationInFrames}
+          creatorLabel={avatarLabel}
+        />
+      )}
 
       {/* CTA */}
       <CTAOverlay

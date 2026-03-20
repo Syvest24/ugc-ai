@@ -11,7 +11,6 @@ import {
 } from 'remotion'
 import { AnimatedCaption } from './components/AnimatedCaption'
 import { HookText } from './components/HookText'
-import { Background } from './components/Background'
 import { SceneBackground } from './components/SceneBackground'
 import { AvatarOverlay } from './components/AvatarOverlay'
 import { ProgressBar, CTAOverlay, Watermark } from './components/Overlays'
@@ -322,6 +321,8 @@ export const SplitScreenVideo: React.FC<UGCVideoProps> = ({
 }) => {
   const { fps, durationInFrames, width, height } = useVideoConfig()
   const hookFrames = Math.floor(fps * 2.5)
+  const ctaFrames = Math.floor(fps * 3)
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * Math.floor((durationInFrames - hookFrames) / Math.max(scriptLines.length, 1)))
 
   return (
     <AbsoluteFill>
@@ -360,9 +361,12 @@ export const SplitScreenVideo: React.FC<UGCVideoProps> = ({
           height: height * 0.65,
         }}
       >
-        <Background
-          type={backgroundImage ? 'image' : 'gradient'}
-          src={backgroundImage}
+        <SceneBackground
+          backgroundImage={backgroundImage}
+          sceneImages={sceneImages}
+          sceneStarts={sceneStarts}
+          hookFrames={hookFrames}
+          ctaFrames={ctaFrames}
           overlay={0.6}
         />
 
@@ -426,6 +430,7 @@ export const CountdownVideo: React.FC<UGCVideoProps> = ({
   const ctaFrames = Math.floor(fps * 3.5)
   const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerItem = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerItem)
 
   // Determine which countdown number is currently showing
   const contentRelFrame = frame - hookFrames
@@ -437,9 +442,12 @@ export const CountdownVideo: React.FC<UGCVideoProps> = ({
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient={`linear-gradient(180deg, #0f0f0f 0%, ${colorAccent}15 50%, #0f0f0f 100%)`}
         overlay={0.5}
       />
@@ -568,6 +576,9 @@ export const TestimonialVideo: React.FC<UGCVideoProps> = ({
 
   const hookFrames = Math.floor(fps * 3)
   const ctaFrames = Math.floor(fps * 3)
+  const contentFrames = durationInFrames - hookFrames - ctaFrames
+  const framesPerLine = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerLine)
 
   // Entry animation for the quote card
   const cardEntry = spring({
@@ -578,9 +589,12 @@ export const TestimonialVideo: React.FC<UGCVideoProps> = ({
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient={`linear-gradient(180deg, #0a0a0a 0%, ${colorAccent}10 40%, #0a0a0a 100%)`}
         overlay={0.6}
       />
@@ -798,12 +812,21 @@ export const BeforeAfterVideo: React.FC<UGCVideoProps> = ({
   const halfIdx = Math.ceil(scriptLines.length / 2)
   const beforeLines = scriptLines.slice(0, halfIdx)
   const afterLines = scriptLines.slice(halfIdx)
+  const sceneStarts = scriptLines.map((_, i) => {
+    if (i < halfIdx) {
+      return hookFrames + i * Math.floor(revealFrames / 2 / Math.max(halfIdx, 1))
+    }
+    return midpoint + (i - halfIdx) * Math.floor((durationInFrames - ctaFrames - midpoint) / Math.max(afterLines.length, 1))
+  })
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient="linear-gradient(180deg, #1a0000 0%, #0a0a0a 50%, #001a00 100%)"
         overlay={0.5}
       />
@@ -955,14 +978,18 @@ export const ProductShowcaseVideo: React.FC<UGCVideoProps> = ({
   const ctaFrames = Math.floor(fps * 3.5)
   const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerCard = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerCard)
 
   const featureIcons = ['✦', '◆', '▸', '●', '★', '⚡']
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient={`radial-gradient(ellipse at center, ${colorAccent}15 0%, #0a0a0a 70%)`}
         overlay={0.5}
       />
@@ -1174,6 +1201,7 @@ export const CinematicVideo: React.FC<UGCVideoProps> = ({
   const ctaFrames = Math.floor(fps * 4)
   const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerLine = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerLine)
 
   // Letterbox bar height animation
   const barHeight = height * 0.08
@@ -1181,9 +1209,12 @@ export const CinematicVideo: React.FC<UGCVideoProps> = ({
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient="linear-gradient(180deg, #0a0a0a 0%, #1a1510 30%, #0d0d0d 70%, #000000 100%)"
         overlay={0.55}
         zoom={true}
@@ -1313,6 +1344,7 @@ export const NeonVideo: React.FC<UGCVideoProps> = ({
   const ctaFrames = Math.floor(fps * 3.5)
   const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerLine = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerLine)
 
   // Neon pulse effect
   const pulse = Math.sin((frame / fps) * Math.PI * 2 * 0.8) * 0.3 + 0.7
@@ -1322,9 +1354,12 @@ export const NeonVideo: React.FC<UGCVideoProps> = ({
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient="linear-gradient(180deg, #05000a 0%, #0a0015 40%, #0f0020 60%, #05000a 100%)"
         overlay={0.6}
       />
@@ -1466,11 +1501,20 @@ export const MinimalistVideo: React.FC<UGCVideoProps> = ({
   const ctaFrames = Math.floor(fps * 3)
   const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerLine = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerLine)
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#FAFAFA' }}>
-      {backgroundImage ? (
-        <Background type="image" src={backgroundImage} overlay={0.15} zoom={false} />
+      {(backgroundImage || sceneImages.length > 0) ? (
+        <SceneBackground
+          backgroundImage={backgroundImage}
+          sceneImages={sceneImages}
+          sceneStarts={sceneStarts}
+          hookFrames={hookFrames}
+          ctaFrames={ctaFrames}
+          overlay={0.15}
+          zoom={false}
+        />
       ) : null}
 
       {audioSrc && (
@@ -1589,14 +1633,18 @@ export const MagazineVideo: React.FC<UGCVideoProps> = ({
   const ctaFrames = Math.floor(fps * 3)
   const contentFrames = durationInFrames - hookFrames - ctaFrames
   const framesPerLine = scriptLines.length > 0 ? Math.floor(contentFrames / scriptLines.length) : contentFrames
+  const sceneStarts = scriptLines.map((_, i) => hookFrames + i * framesPerLine)
 
   return (
     <AbsoluteFill>
-      <Background
-        type={backgroundImage ? 'image' : 'gradient'}
-        src={backgroundImage}
+      <SceneBackground
+        backgroundImage={backgroundImage}
+        sceneImages={sceneImages}
+        sceneStarts={sceneStarts}
+        hookFrames={hookFrames}
+        ctaFrames={ctaFrames}
         gradient="linear-gradient(180deg, #f5f0eb 0%, #e8e0d8 50%, #f5f0eb 100%)"
-        overlay={backgroundImage ? 0.3 : 0}
+        overlay={(backgroundImage || sceneImages.length > 0) ? 0.3 : 0}
         zoom={false}
       />
 

@@ -125,8 +125,9 @@ export default function VideoPreview({
         return (
           <>
             <div className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, #0a0a0a, #1a1a2e 50%, #0a0a0a)' }}
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : 'linear-gradient(180deg, #0a0a0a, #1a1a2e 50%, #0a0a0a)' }}
             />
+            {backgroundImage && <div className="absolute inset-0 bg-black/50" />}
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/10 z-10">
               <div className="h-full transition-all duration-500" style={{
                 backgroundColor: colorAccent,
@@ -177,7 +178,8 @@ export default function VideoPreview({
             </div>
             <div className="absolute bottom-0 left-0 right-0" style={{ height: '65%' }}>
               <div className="h-full"
-                style={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }} />
+                style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : 'linear-gradient(135deg, #1a1a2e, #0f3460)' }} />
+              {backgroundImage && <div className="absolute inset-0 bg-black/50" />}
               <div className="absolute inset-0 flex items-center justify-center px-4">
                 {currentStep === 'cta' ? (
                   <p className="text-[9px] font-bold uppercase tracking-wider animate-fade-in"
@@ -196,7 +198,8 @@ export default function VideoPreview({
         return (
           <>
             <div className="absolute inset-0"
-              style={{ background: `linear-gradient(180deg, #0f0f0f, ${colorAccent}15 50%, #0f0f0f)` }} />
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : `linear-gradient(180deg, #0f0f0f, ${colorAccent}15 50%, #0f0f0f)` }} />
+            {backgroundImage && <div className="absolute inset-0 bg-black/40" />}
 
             {currentStep === 'hook' && (
               <div className="absolute inset-0 flex items-center justify-center px-4 animate-fade-in">
@@ -237,7 +240,8 @@ export default function VideoPreview({
         return (
           <>
             <div className="absolute inset-0"
-              style={{ background: `linear-gradient(180deg, #0a0a0a, ${colorAccent}10 40%, #0a0a0a)` }} />
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : `linear-gradient(180deg, #0a0a0a, ${colorAccent}10 40%, #0a0a0a)` }} />
+            {backgroundImage && <div className="absolute inset-0 bg-black/50" />}
 
             {currentStep === 'hook' && (
               <div className="absolute inset-0 flex items-center justify-center px-4 animate-fade-in">
@@ -279,7 +283,8 @@ export default function VideoPreview({
         return (
           <>
             <div className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, #1a0000, #0a0a0a 50%, #001a00)' }} />
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : 'linear-gradient(180deg, #1a0000, #0a0a0a 50%, #001a00)' }} />
+            {backgroundImage && <div className="absolute inset-0 bg-black/40" />}
 
             {currentStep === 'hook' && (
               <div className="absolute inset-0 flex items-center justify-center px-4 animate-fade-in">
@@ -325,7 +330,8 @@ export default function VideoPreview({
         return (
           <>
             <div className="absolute inset-0"
-              style={{ background: `radial-gradient(ellipse at center, ${colorAccent}15, #0a0a0a 70%)` }} />
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : `radial-gradient(ellipse at center, ${colorAccent}15, #0a0a0a 70%)` }} />
+            {backgroundImage && <div className="absolute inset-0 bg-black/40" />}
 
             {currentStep === 'hook' && (
               <div className="absolute inset-0 flex items-center justify-center px-4 animate-typewriter">
@@ -366,6 +372,157 @@ export default function VideoPreview({
             {currentStep === 'cta' && (
               <div className="absolute bottom-0 left-0 right-0 animate-fade-in"
                 style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.9) 40%)' }}>
+                <p className="text-white text-[10px] font-bold text-center pb-4 pt-6">{cta}</p>
+              </div>
+            )}
+          </>
+        )
+
+      case 'Cinematic':
+        return (
+          <>
+            <div className="absolute inset-0"
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : 'linear-gradient(180deg, #0a0a0a, #1a1510 30%, #0d0d0d 70%, #000)' }} />
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
+            {/* Letterbox bars */}
+            <div className="absolute top-0 left-0 right-0 h-[8%] bg-black z-10" />
+            <div className="absolute bottom-0 left-0 right-0 h-[8%] bg-black z-10" />
+
+            {currentStep === 'hook' && (
+              <div className="absolute inset-0 flex items-center justify-center px-4 z-20 animate-fade-in">
+                <div className="text-center">
+                  <p className="text-white font-bold text-xs font-serif" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}>
+                    {hook}
+                  </p>
+                  <div className="w-8 h-[1px] mx-auto mt-1.5" style={{ background: colorAccent }} />
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'content' && (
+              <div className="absolute bottom-[12%] left-0 right-0 px-6 z-20 animate-fade-in">
+                <p className="text-gray-200 text-[10px] text-center font-serif" style={{ textShadow: '0 1px 10px rgba(0,0,0,0.9)' }}>
+                  {scriptLines[currentLine]}
+                </p>
+              </div>
+            )}
+
+            {currentStep === 'cta' && (
+              <div className="absolute bottom-[12%] left-0 right-0 flex justify-center z-20 animate-fade-in">
+                <p className="text-white text-[10px] font-medium font-serif">{cta}</p>
+              </div>
+            )}
+          </>
+        )
+
+      case 'Neon':
+        return (
+          <>
+            <div className="absolute inset-0"
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : 'linear-gradient(180deg, #05000a, #0a0015 40%, #0f0020 60%, #05000a)' }} />
+            <div className="absolute inset-0 bg-black/50" />
+            {/* Neon border */}
+            <div className="absolute inset-2 rounded-xl z-10" style={{ border: `1px solid ${colorAccent}40`, boxShadow: `inset 0 0 15px ${colorAccent}10, 0 0 15px ${colorAccent}10` }} />
+
+            {currentStep === 'hook' && (
+              <div className="absolute inset-0 flex items-center justify-center px-4 z-20 animate-fade-in">
+                <p className="text-white font-black text-xs text-center uppercase tracking-wider"
+                  style={{ textShadow: `0 0 8px ${colorAccent}, 0 0 30px ${colorAccent}80` }}>
+                  {hook}
+                </p>
+              </div>
+            )}
+
+            {currentStep === 'content' && (
+              <div className="absolute inset-0 flex items-center justify-center px-3 z-20 animate-slide-in">
+                <div className="bg-black/80 rounded-lg px-3 py-2 max-w-full" style={{ border: `1px solid ${colorAccent}50` }}>
+                  <div className="text-[7px] font-bold uppercase tracking-wider mb-0.5" style={{ color: colorAccent }}>/// Point {currentLine + 1}</div>
+                  <p className="text-gray-200 text-[10px] font-medium">{scriptLines[currentLine]}</p>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'cta' && (
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20 animate-bounce-in">
+                <div className="px-4 py-1.5 rounded-full text-[9px] font-bold uppercase" style={{ backgroundColor: colorAccent, color: '#000' }}>
+                  {cta}
+                </div>
+              </div>
+            )}
+          </>
+        )
+
+      case 'Minimalist':
+        return (
+          <>
+            <div className="absolute inset-0" style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : '#FAFAFA' }} />
+            {backgroundImage && <div className="absolute inset-0 bg-white/80" />}
+            <div className="absolute top-0 left-0 right-0 h-[2px] z-10" style={{ background: colorAccent }} />
+
+            {currentStep === 'hook' && (
+              <div className="absolute inset-0 flex items-center justify-center px-6 animate-fade-in">
+                <div className="text-center">
+                  <p className="text-[11px] font-light font-serif" style={{ color: colorAccent }}>{hook}</p>
+                  <div className="w-4 h-[1px] mx-auto mt-2 opacity-30" style={{ background: colorAccent }} />
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'content' && (
+              <div className="absolute inset-0 flex items-center justify-center px-6 animate-fade-in">
+                <div className="text-center">
+                  <div className="text-[8px] font-medium tracking-widest text-gray-400 mb-1">{String(currentLine + 1).padStart(2, '0')}</div>
+                  <p className="text-[10px] font-serif text-gray-700">{scriptLines[currentLine]}</p>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'cta' && (
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center animate-fade-in">
+                <p className="text-[9px] font-medium" style={{ color: colorAccent }}>{cta}</p>
+              </div>
+            )}
+          </>
+        )
+
+      case 'Magazine':
+        return (
+          <>
+            <div className="absolute inset-0"
+              style={{ background: backgroundImage ? `url(${backgroundImage}) center/cover` : 'linear-gradient(180deg, #f5f0eb, #e8e0d8 50%, #f5f0eb)' }} />
+            {backgroundImage && <div className="absolute inset-0 bg-black/25" />}
+            {/* Accent bar */}
+            <div className="absolute top-8 left-3 w-[2px] h-10 z-10" style={{ background: colorAccent }} />
+            <div className="absolute top-4 right-4 z-10 text-[7px] tracking-widest font-serif" style={{ color: backgroundImage ? '#fff' : '#888' }}>EDITORIAL</div>
+
+            {currentStep === 'hook' && (
+              <div className="absolute inset-0 flex items-center justify-center px-4 z-20 animate-fade-in">
+                <div className="text-left max-w-[85%]">
+                  <div className="text-[7px] font-semibold uppercase tracking-widest mb-1" style={{ color: colorAccent }}>FEATURED</div>
+                  <p className="text-sm font-bold font-serif leading-tight" style={{ color: backgroundImage ? '#fff' : '#1a1a1a', textShadow: backgroundImage ? '0 1px 10px rgba(0,0,0,0.5)' : 'none' }}>
+                    {hook}
+                  </p>
+                  <div className="w-6 h-[2px] mt-1.5" style={{ background: colorAccent }} />
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'content' && (
+              <div className="absolute inset-0 flex items-center justify-center px-4 z-20 animate-slide-in">
+                <div className="max-w-[85%]">
+                  <div className="text-lg font-light opacity-40 font-serif leading-none mb-0.5" style={{ color: colorAccent }}>&ldquo;</div>
+                  <p className="text-[10px] font-serif italic" style={{ color: backgroundImage ? '#fff' : '#2a2a2a', textShadow: backgroundImage ? '0 1px 8px rgba(0,0,0,0.5)' : 'none' }}>
+                    {scriptLines[currentLine]}
+                  </p>
+                  <div className="w-4 h-[1px] mt-1.5 opacity-60" style={{ background: colorAccent }} />
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'cta' && (
+              <div className="absolute bottom-0 left-0 right-0 animate-fade-in z-20"
+                style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.8) 40%)' }}>
                 <p className="text-white text-[10px] font-bold text-center pb-4 pt-6">{cta}</p>
               </div>
             )}

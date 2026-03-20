@@ -4,9 +4,10 @@
  * Generates talking head videos from a face image + audio.
  *
  * Providers (priority order):
- *  1. D-ID (free 5 min/month) — professional realistic lip-sync
- *  2. SadTalker via Replicate (~$0.005/run) — open source fallback
- *  3. Static overlay (always free) — face image with CSS lip-sync via word boundaries
+ *  1. SadTalker via Replicate (~$0.005/run) — open source, good quality
+ *  2. Wav2Lip via Replicate (~$0.005/run) — best lip-sync accuracy
+ *  3. D-ID (optional, free 5 min/month) — professional realistic lip-sync
+ *  4. Static overlay (always free) — face image with CSS lip-sync via word boundaries
  */
 
 import { writeFile, mkdir } from 'fs/promises'
@@ -19,7 +20,7 @@ const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_
 
 // ─── Types ────────────────────────────────────────────────────
 
-export type AvatarProvider = 'did' | 'sadtalker' | 'static'
+export type AvatarProvider = 'sadtalker' | 'wav2lip' | 'did' | 'static'
 
 export interface AvatarGenerateOptions {
   faceImageUrl: string
@@ -51,8 +52,8 @@ async function ensureOutputDir() {
 // ─── Provider Selection ───────────────────────────────────────
 
 function selectProvider(): AvatarProvider {
-  if (process.env.DID_API_KEY) return 'did'
   if (process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY) return 'sadtalker'
+  if (process.env.DID_API_KEY) return 'did'
   return 'static'
 }
 
@@ -65,10 +66,12 @@ export async function generateAvatar(options: AvatarGenerateOptions): Promise<Av
   await ensureOutputDir()
 
   switch (provider) {
-    case 'did':
-      return generateWithDID(faceImageUrl, audioUrl, durationMs)
     case 'sadtalker':
       return generateWithSadTalker(faceImageUrl, audioUrl, durationMs)
+    case 'wav2lip':
+      return generateWithWav2Lip(faceImageUrl, audioUrl, durationMs)
+    case 'did':
+      return generateWithDID(faceImageUrl, audioUrl, durationMs)
     case 'static':
     default:
       return { videoUrl: faceImageUrl, provider: 'static', model: 'static-overlay', isVideo: false, duration: durationMs ? durationMs / 1000 : 30 }
@@ -254,12 +257,87 @@ async function generateWithSadTalker(
   }
 }
 
+// ─── Provider: Wav2Lip via Replicate ─────────────────────────
+
+async function generateWithWav2Lip(
+  faceImageUrl: string,
+  audioUrl: string,
+  durationMs?: number,
+): Promise<AvatarResult> {
+  const apiKey = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
+  if (!apiKey) throw new Error('REPLICATE_API_TOKEN not configured')
+
+  console.log(`[Avatar/Wav2Lip] Starting prediction`)
+
+  const res = await fetch('https://api.replicate.com/v1/models/devxpy/cog-wav2lip/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      input: {
+        face: faceImageUrl,
+        audio: audioUrl,
+        pads: '0 10 0 0',
+        smooth: true,
+        fps: 25,
+      },
+    }),
+  })
+
+  if (res.status === 429 || !res.ok) {
+    console.warn(`[Avatar/Wav2Lip] Replicate error ${res.status} — falling back to static`)
+    return { videoUrl: faceImageUrl, provider: 'static', model: 'static-overlay', isVideo: false, duration: durationMs ? durationMs / 1000 : 30 }
+  }
+
+  let result = await res.json() as Record<string, unknown>
+
+  // Poll for completion (max 3 minutes)
+  const maxWait = 180_000
+  const start = Date.now()
+
+  while (Date.now() - start < maxWait) {
+    if (result.status === 'succeeded') break
+    if (result.status === 'failed') {
+      console.warn('[Avatar/Wav2Lip] Failed:', result.error)
+      return { videoUrl: faceImageUrl, provider: 'static', model: 'static-overlay', isVideo: false, duration: durationMs ? durationMs / 1000 : 30 }
+    }
+    await new Promise(r => setTimeout(r, 3000))
+    const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id as string}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    })
+    result = await pollRes.json()
+  }
+
+  if (result.status !== 'succeeded' || !result.output) {
+    console.warn('[Avatar/Wav2Lip] Timed out or no output — using static')
+    return { videoUrl: faceImageUrl, provider: 'static', model: 'static-overlay', isVideo: false, duration: durationMs ? durationMs / 1000 : 30 }
+  }
+
+  const outputUrl = result.output as string
+  console.log(`[Avatar/Wav2Lip] Succeeded — downloading`)
+  const videoRes = await fetch(outputUrl)
+  const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
+  const videoUrl = await saveAvatarVideo(videoBuffer)
+
+  return {
+    videoUrl,
+    provider: 'wav2lip',
+    model: 'wav2lip-replicate',
+    isVideo: true,
+    duration: durationMs ? durationMs / 1000 : 0,
+  }
+}
+
 // ─── Provider Info ────────────────────────────────────────────
 
 export function getAvailableProviders() {
+  const hasReplicate = !!(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY)
   return [
+    { id: 'sadtalker' as const, name: 'SadTalker', available: hasReplicate, description: 'Open-source talking head with full head motion (Replicate, ~$0.005/run)' },
+    { id: 'wav2lip' as const, name: 'Wav2Lip', available: hasReplicate, description: 'Accurate lip-sync on any face (Replicate, ~$0.005/run)' },
     { id: 'did' as const, name: 'D-ID', available: !!process.env.DID_API_KEY, description: 'Professional AI talking head with realistic lip-sync (5 min free/month)' },
-    { id: 'sadtalker' as const, name: 'SadTalker', available: !!(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY), description: 'Open-source talking head via Replicate (~$0.005/run)' },
-    { id: 'static' as const, name: 'Static Overlay', available: true, description: 'Animated face overlay with breathing effect (always free)' },
+    { id: 'static' as const, name: 'Static Overlay', available: true, description: 'Animated face overlay with breathing effect and visual lip-sync (always free)' },
   ]
 }

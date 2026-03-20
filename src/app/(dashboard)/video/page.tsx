@@ -75,6 +75,7 @@ export default function VideoPage() {
   const [avatarLabel, setAvatarLabel] = useState('')
   const [avatarLoading, setAvatarLoading] = useState(false)
   const [avatarEnabled, setAvatarEnabled] = useState(false)
+  const [avatarProvider, setAvatarProvider] = useState<'sadtalker' | 'wav2lip' | 'did' | 'static'>('sadtalker')
 
   // Video settings
   const [selectedTemplate, setSelectedTemplate] = useState('CaptionStyle')
@@ -387,6 +388,7 @@ export default function VideoPage() {
         body: JSON.stringify({
           faceImageUrl: avatarFaceUrl,
           audioUrl: ttsResult.serverAudioUrl,
+          provider: avatarProvider,
           durationMs: ttsResult.duration ? ttsResult.duration + 1000 : 30000,
         }),
       })
@@ -450,8 +452,8 @@ export default function VideoPage() {
           // Avatar props
           ...(avatarEnabled && avatarFaceUrl ? {
             avatarFaceUrl,
-            avatarVideoUrl: avatarVideoUrl || undefined,
-            avatarIsVideo,
+            avatarVideoUrl: avatarProvider === 'static' ? undefined : (avatarVideoUrl || undefined),
+            avatarIsVideo: avatarProvider === 'static' ? false : avatarIsVideo,
             avatarPosition,
             avatarShape,
             avatarSize,
@@ -791,6 +793,27 @@ export default function VideoPage() {
             {avatarEnabled && (
               <>
                 <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Provider</label>
+                  <select
+                    value={avatarProvider}
+                    onChange={e => setAvatarProvider(e.target.value as typeof avatarProvider)}
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                  >
+                    <option value="sadtalker">SadTalker — Full head motion (Replicate)</option>
+                    <option value="wav2lip">Wav2Lip — Best lip-sync accuracy (Replicate)</option>
+                    <option value="did">D-ID — Professional realistic (requires API key)</option>
+                    <option value="static">Static — CSS-animated overlay (free, no API)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {avatarProvider === 'static'
+                      ? 'Uses your face photo as a static overlay with visual speaking indicators — completely free.'
+                      : avatarProvider === 'did'
+                        ? 'D-ID creates professional lip-synced videos. Requires a DID_API_KEY in your environment.'
+                        : 'Uses your Replicate API token (~$0.005 per generation). Both SadTalker and Wav2Lip produce lip-synced video.'}
+                  </p>
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Face Image URL</label>
                   <input
                     type="url"
@@ -804,7 +827,7 @@ export default function VideoPage() {
                   </p>
                 </div>
 
-                {avatarFaceUrl && (
+                {avatarFaceUrl && avatarProvider !== 'static' && (
                   <div className="flex items-start gap-4">
                     <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-700 flex-shrink-0">
                       <img
@@ -834,7 +857,23 @@ export default function VideoPage() {
                   </div>
                 )}
 
-                {!ttsResult && avatarFaceUrl && (
+                {avatarFaceUrl && avatarProvider === 'static' && (
+                  <div className="flex items-start gap-4">
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-700 flex-shrink-0">
+                      <img
+                        src={avatarFaceUrl}
+                        alt="Face preview"
+                        className="w-full h-full object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                    </div>
+                    <div className="bg-green-900/20 border border-green-700/40 rounded-lg p-3">
+                      <span className="text-sm text-green-300">Static overlay ready — face will appear with visual speaking indicators in your video (no API call needed).</span>
+                    </div>
+                  </div>
+                )}
+
+                {!ttsResult && avatarFaceUrl && avatarProvider !== 'static' && (
                   <p className="text-xs text-amber-400">Generate voiceover first (Step 2) to create a lip-synced talking head.</p>
                 )}
 

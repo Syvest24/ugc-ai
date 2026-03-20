@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const validProviders: AvatarProvider[] = ['did', 'sadtalker', 'static']
+    const validProviders: AvatarProvider[] = ['sadtalker', 'wav2lip', 'did', 'static']
     if (provider && !validProviders.includes(provider)) {
       done(400)
       return badRequest(`Invalid provider. Valid options: ${validProviders.join(', ')}`)

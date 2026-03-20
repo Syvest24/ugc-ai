@@ -74,9 +74,10 @@ COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/src ./src
 
-# Copy Remotion's headless Chromium browser from builder cache
-# It's downloaded to /root/.cache/remotion/ during build
-COPY --from=builder /root/.cache/remotion /root/.cache/remotion
+# Ensure Remotion browser binary is available in production
+# The binary is in node_modules/.remotion/ from the builder stage copy,
+# but we run ensure again to verify it's valid for this architecture
+RUN npx remotion browser ensure
 
 EXPOSE 8080
 

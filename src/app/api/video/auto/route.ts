@@ -53,14 +53,16 @@ function cleanScriptLines(rawScript: string): string[] {
     .split('\n')
     .map(l => l.replace(/\[.*?\]/g, '').trim())  // remove ALL bracketed directions
     .filter(l => l.length > 3)  // filter out empty/very short
-    .slice(0, 12)
+    .slice(0, 20) // generous upper bound before merging
 
-  // Merge consecutive short lines (under 30 chars) into single lines
+  // Merge consecutive short lines, preserving sentence-ending punctuation
   const merged: string[] = []
   let buffer = ''
   for (const line of lines) {
     if (buffer && (buffer.length + line.length) < 80) {
-      buffer += ' ' + line
+      // Add proper sentence separator if buffer doesn't end with punctuation
+      const separator = /[.!?,:;]$/.test(buffer) ? ' ' : '. '
+      buffer += separator + line
     } else {
       if (buffer) merged.push(buffer)
       buffer = line
@@ -68,7 +70,8 @@ function cleanScriptLines(rawScript: string): string[] {
   }
   if (buffer) merged.push(buffer)
 
-  return merged.slice(0, 8)
+  // No hard cap — let Remotion handle layout; just keep it reasonable
+  return merged.slice(0, 15)
 }
 
 export async function POST(req: NextRequest) {

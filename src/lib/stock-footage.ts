@@ -11,12 +11,30 @@ export interface StockClip {
   photographer?: string
 }
 
+const PEXELS_FETCH_TIMEOUT = 10_000 // 10 seconds
+const PEXELS_MAX_RETRIES = 2
+
 const getClient = () => {
   const apiKey = process.env.PEXELS_API_KEY
   if (!apiKey) {
-    throw new Error('PEXELS_API_KEY is not set. Get a free key at https://www.pexels.com/api/')
+    console.warn('[StockFootage] PEXELS_API_KEY is not set — stock footage unavailable')
+    return null
   }
   return createClient(apiKey)
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = PEXELS_MAX_RETRIES): Promise<T> {
+  let lastError: Error | null = null
+  for (let i = 0; i < retries; i++) {
+    try {
+      if (i > 0) await new Promise(r => setTimeout(r, 1000 * i))
+      return await fn()
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      console.warn(`[StockFootage] Attempt ${i + 1}/${retries} failed: ${lastError.message}`)
+    }
+  }
+  throw lastError
 }
 
 export async function searchStockVideos(
@@ -28,40 +46,41 @@ export async function searchStockVideos(
   } = {}
 ): Promise<StockClip[]> {
   const client = getClient()
+  if (!client) return []
   const { perPage = 5, orientation = 'portrait', size = 'medium' } = options
 
   try {
-    const result = await client.videos.search({
-      query,
-      per_page: perPage,
-      orientation,
-      size,
-    })
+    return await withRetry(async () => {
+      const result = await client.videos.search({
+        query,
+        per_page: perPage,
+        orientation,
+        size,
+      })
 
-    if ('error' in result) {
-      console.error('Pexels video search error:', result.error)
-      return []
-    }
-
-    return result.videos.map((video: Video) => {
-      // Get the best quality file for the orientation
-      const videoFile = video.video_files
-        .filter(f => f.quality === 'hd' || f.quality === 'sd')
-        .sort((a, b) => (b.width || 0) - (a.width || 0))[0]
-
-      return {
-        id: video.id,
-        url: videoFile?.link || video.video_files[0]?.link || '',
-        previewUrl: video.image || '',
-        width: videoFile?.width || video.width,
-        height: videoFile?.height || video.height,
-        duration: video.duration,
-        type: 'video' as const,
-        photographer: video.user?.name,
+      if ('error' in result) {
+        throw new Error(`Pexels video search error: ${result.error}`)
       }
+
+      return result.videos.map((video: Video) => {
+        const videoFile = video.video_files
+          .filter(f => f.quality === 'hd' || f.quality === 'sd')
+          .sort((a, b) => (b.width || 0) - (a.width || 0))[0]
+
+        return {
+          id: video.id,
+          url: videoFile?.link || video.video_files[0]?.link || '',
+          previewUrl: video.image || '',
+          width: videoFile?.width || video.width,
+          height: videoFile?.height || video.height,
+          duration: video.duration,
+          type: 'video' as const,
+          photographer: video.user?.name,
+        }
+      })
     })
   } catch (error) {
-    console.error('Pexels search error:', error)
+    console.error('[StockFootage] Video search failed after retries:', error)
     return []
   }
 }
@@ -75,32 +94,34 @@ export async function searchStockImages(
   } = {}
 ): Promise<StockClip[]> {
   const client = getClient()
+  if (!client) return []
   const { perPage = 5, orientation = 'portrait', size = 'medium' } = options
 
   try {
-    const result = await client.photos.search({
-      query,
-      per_page: perPage,
-      orientation,
-      size,
+    return await withRetry(async () => {
+      const result = await client.photos.search({
+        query,
+        per_page: perPage,
+        orientation,
+        size,
+      })
+
+      if ('error' in result) {
+        throw new Error(`Pexels image search error: ${result.error}`)
+      }
+
+      return result.photos.map((photo: Photo) => ({
+        id: photo.id,
+        url: photo.src.original,
+        previewUrl: photo.src.medium,
+        width: photo.width,
+        height: photo.height,
+        type: 'image' as const,
+        photographer: photo.photographer,
+      }))
     })
-
-    if ('error' in result) {
-      console.error('Pexels image search error:', result.error)
-      return []
-    }
-
-    return result.photos.map((photo: Photo) => ({
-      id: photo.id,
-      url: photo.src.original,
-      previewUrl: photo.src.medium,
-      width: photo.width,
-      height: photo.height,
-      type: 'image' as const,
-      photographer: photo.photographer,
-    }))
   } catch (error) {
-    console.error('Pexels image search error:', error)
+    console.error('[StockFootage] Image search failed after retries:', error)
     return []
   }
 }
@@ -114,7 +135,7 @@ export function extractSearchKeywords(productName: string, productDescription: s
   // Product-specific keywords
   keywords.push(productName.split(' ').slice(0, 2).join(' '))
 
-  // Category detection for relevant B-roll
+  // Category detection for relevant B-roll — match ALL relevant categories
   const categoryMap: Record<string, string[]> = {
     'fitness|gym|workout|exercise|sport': ['fitness motivation', 'workout lifestyle', 'gym training'],
     'beauty|skin|makeup|skincare|glow': ['beauty routine', 'skincare lifestyle', 'self care'],
@@ -131,7 +152,6 @@ export function extractSearchKeywords(productName: string, productDescription: s
   for (const [pattern, terms] of Object.entries(categoryMap)) {
     if (new RegExp(pattern).test(words)) {
       keywords.push(...terms.slice(0, 2))
-      break
     }
   }
 

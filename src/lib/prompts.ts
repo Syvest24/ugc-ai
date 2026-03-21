@@ -116,12 +116,18 @@ export function parseGeneratedOutput(raw: string): GeneratedOutput {
     return raw.slice(contentStart, endIdx === -1 ? raw.length : endIdx).trim()
   }
 
-  const hookSection = extract('=== HOOK OPTIONS ===', '=== SCRIPT ===')
-  const hookLines = hookSection.split('\n').filter(l => /^\d+\./.test(l.trim()))
-  const hookBank = hookLines.map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
-  if (hookBank.length === 0) {
-    hookSection.split('\n').filter(l => l.trim()).slice(0, 10).forEach(l => hookBank.push(l.trim()))
+  // Also accept numbered items with various formats: "1.", "1)", "- ", "• "
+  const extractNumberedItems = (section: string, maxItems = 10): string[] => {
+    if (!section) return []
+    const lines = section.split('\n').map(l => l.trim()).filter(Boolean)
+    const items = lines
+      .map(l => l.replace(/^[\d]+[.)]\s*/, '').replace(/^[-•]\s*/, '').trim())
+      .filter(l => l.length > 5)
+    return items.slice(0, maxItems)
   }
+
+  const hookSection = extract('=== HOOK OPTIONS ===', '=== SCRIPT ===')
+  const hookBank = extractNumberedItems(hookSection, 10)
 
   const script = extract('=== SCRIPT ===', '=== ALT ANGLE (Problem-Based) ===')
   const altProblem = extract('=== ALT ANGLE (Problem-Based) ===', '=== ALT ANGLE (Story-Based) ===')
@@ -132,17 +138,15 @@ export function parseGeneratedOutput(raw: string): GeneratedOutput {
   const hashtagSection = extract('=== HASHTAGS ===', '=== CTA VARIATIONS ===')
   const hashtags = hashtagSection.split('\n').map(l => l.trim()).filter(l => l.startsWith('#'))
 
-  const ctaSection = extract('=== CTA VARIATIONS ===', '=== THUMBNAIL TEXT ===')
-  const ctaLines = ctaSection.split('\n').filter(l => /^\d+\./.test(l.trim()))
-  const ctaVariations = ctaLines.map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
-
-  const thumbSection = extract('=== THUMBNAIL TEXT ===', '=== ENGAGEMENT BAIT COMMENTS ===')
-  const thumbLines = thumbSection.split('\n').filter(l => /^\d+\./.test(l.trim()))
-  const thumbnailTexts = thumbLines.map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
-
-  const engageSection = extract('=== ENGAGEMENT BAIT COMMENTS ===', '=== REPURPOSED FOR ANOTHER PLATFORM ===')
-  const engageLines = engageSection.split('\n').filter(l => /^\d+\./.test(l.trim()))
-  const engagementBaits = engageLines.map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+  const ctaVariations = extractNumberedItems(
+    extract('=== CTA VARIATIONS ===', '=== THUMBNAIL TEXT ==='), 5
+  )
+  const thumbnailTexts = extractNumberedItems(
+    extract('=== THUMBNAIL TEXT ===', '=== ENGAGEMENT BAIT COMMENTS ==='), 5
+  )
+  const engagementBaits = extractNumberedItems(
+    extract('=== ENGAGEMENT BAIT COMMENTS ===', '=== REPURPOSED FOR ANOTHER PLATFORM ==='), 5
+  )
 
   const repurposedContent = extract('=== REPURPOSED FOR ANOTHER PLATFORM ===', '=== A/B TEST VARIANTS ===')
 
@@ -171,4 +175,23 @@ export function parseGeneratedOutput(raw: string): GeneratedOutput {
     repurposedContent: repurposedContent || 'Repurposed content coming soon...',
     abVariants: abVariants.length > 0 ? abVariants : ['A/B variants coming soon...'],
   }
+}
+
+/**
+ * Validate that parsed output has meaningful content (not just fallback placeholders).
+ * Returns the number of successfully parsed sections (out of ~10).
+ */
+export function validateParsedOutput(output: GeneratedOutput): number {
+  let score = 0
+  if (output.hookBank.length > 0 && output.hookBank[0] !== 'Hook generation in progress...') score++
+  if (output.script && output.script !== 'Script generation in progress...') score++
+  if (output.altAngles.problemBased !== 'Alternative angle coming soon...') score++
+  if (output.altAngles.storyBased !== 'Story angle coming soon...') score++
+  if (output.caption !== 'Caption coming soon...') score++
+  if (output.hashtags.length > 2) score++
+  if (output.ctaVariations.length > 0 && output.ctaVariations[0] !== 'Check link in bio!') score++
+  if (output.thumbnailTexts.length > 0 && output.thumbnailTexts[0] !== 'Watch This!') score++
+  if (output.engagementBaits.length > 0 && output.engagementBaits[0] !== 'What do you think?') score++
+  if (output.repurposedContent !== 'Repurposed content coming soon...') score++
+  return score
 }

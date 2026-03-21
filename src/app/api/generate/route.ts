@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { generateContent } from '@/lib/llm'
-import { buildMasterPrompt, parseGeneratedOutput, systemPrompt } from '@/lib/prompts'
+import { buildMasterPrompt, parseGeneratedOutput, validateParsedOutput, systemPrompt } from '@/lib/prompts'
 import { rateLimit } from '@/lib/rate-limit'
 import { ensureUser, trackUsage, prisma } from '@/lib/db'
 import { z } from 'zod'
@@ -44,14 +44,28 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildMasterPrompt(parsed.data)
-    const rawOutput = await generateContent({
-      prompt,
-      systemPrompt,
-      temperature: 0.85,
-      maxTokens: 3000,
-    })
 
-    const output = parseGeneratedOutput(rawOutput)
+    // Generate content with retry if parsing yields too few sections
+    let rawOutput = ''
+    let output = parseGeneratedOutput('')
+    const MIN_SECTIONS = 4 // At least 4 out of ~10 sections must parse successfully
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      rawOutput = await generateContent({
+        prompt,
+        systemPrompt,
+        temperature: attempt === 0 ? 0.85 : 0.7, // Lower temp on retry for more predictable formatting
+        maxTokens: 3000,
+      })
+
+      output = parseGeneratedOutput(rawOutput)
+      const score = validateParsedOutput(output)
+
+      if (score >= MIN_SECTIONS) break
+      if (attempt === 0) {
+        console.warn(`[Generate] Parsed only ${score}/${MIN_SECTIONS} sections, retrying with lower temperature...`)
+      }
+    }
 
     // Save to database automatically
     const user = await ensureUser(session.user.email, session.user.name)

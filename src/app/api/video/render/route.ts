@@ -69,6 +69,7 @@ async function extractThumbnail(videoServePath: string): Promise<string | undefi
 
 export async function POST(req: NextRequest) {
   let done = (_status: number, _extra?: Record<string, unknown>) => {}
+  let videoRecord: { id: string } | undefined
   try {
     const session = await auth()
     if (!session?.user?.email) return unauthorized()
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     // Save video record as rendering
     const user = await ensureUser(session.user.email, session.user.name)
-    const videoRecord = await prisma.video.create({
+    videoRecord = await prisma.video.create({
       data: {
         userId: user.id,
         contentId: body.contentId || null,
@@ -172,6 +173,16 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error) {
+    // Mark video record as failed if it was created
+    if (typeof videoRecord !== 'undefined' && videoRecord?.id) {
+      try {
+        await prisma.video.update({
+          where: { id: videoRecord.id },
+          data: { status: 'failed' },
+        })
+      } catch { /* best effort */ }
+    }
+
     if (error instanceof QueueFullError) {
       done(503)
       return apiError({ error: error.message, status: 503 })

@@ -70,6 +70,22 @@ export async function generateTTS(
   rate: string = '+0%',
   pitch: string = '+0Hz'
 ): Promise<TTSResult> {
+  // Cap text at ~5000 chars (~3 minutes of speech) to prevent timeouts
+  const MAX_TTS_CHARS = 5000
+  let processedText = text
+  if (processedText.length > MAX_TTS_CHARS) {
+    console.warn(`[TTS] Text too long (${processedText.length} chars), truncating to ${MAX_TTS_CHARS}`)
+    processedText = processedText.slice(0, MAX_TTS_CHARS)
+    // Avoid cutting mid-word — trim to last complete sentence or word
+    const lastSentenceEnd = processedText.lastIndexOf('.')
+    const lastSpace = processedText.lastIndexOf(' ')
+    if (lastSentenceEnd > MAX_TTS_CHARS * 0.8) {
+      processedText = processedText.slice(0, lastSentenceEnd + 1)
+    } else if (lastSpace > MAX_TTS_CHARS * 0.8) {
+      processedText = processedText.slice(0, lastSpace)
+    }
+  }
+
   // Retry up to 2 times for transient WebSocket failures
   let lastError: Error | null = null
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -78,7 +94,7 @@ export async function generateTTS(
         console.log(`[TTS] Retry attempt ${attempt + 1}/3`)
         await new Promise(r => setTimeout(r, 1000 * attempt))
       }
-      return await _generateTTSAttempt(text, voiceId, rate, pitch)
+      return await _generateTTSAttempt(processedText, voiceId, rate, pitch)
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err))
       console.warn(`[TTS] Attempt ${attempt + 1} failed:`, lastError.message)

@@ -102,8 +102,9 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all focus-ring',
                       isActive
                         ? 'bg-violet-600/20 text-violet-400 border border-violet-600/30'
                         : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
@@ -122,7 +123,7 @@ export default function Navbar() {
       <div className="p-4 border-t border-gray-800">
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all w-full focus-ring"
         >
           <LogOut className="w-4 h-4" />
           Sign Out
@@ -155,11 +156,14 @@ export default function Navbar() {
         <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar — desktop: fixed, mobile: slide-in drawer */}
       <nav
+        role="navigation"
+        aria-label="Main navigation"
         className={cn(
           'fixed top-0 h-full w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50 transition-transform duration-300 ease-in-out',
           // Desktop: always visible

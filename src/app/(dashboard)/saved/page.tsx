@@ -154,7 +154,7 @@ ${item.output.hashtags.join('\n')}
   }
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-5xl animate-fade-in">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-white mb-1">Saved Content</h1>
         <p className="text-gray-400">{total} saved generation{total !== 1 ? 's' : ''}</p>

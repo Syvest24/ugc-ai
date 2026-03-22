@@ -541,13 +541,13 @@ export default function VideoPage() {
   )
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-5xl animate-fade-in">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           {contentId && (
             <Link
               href="/generate"
-              className="flex items-center gap-1 text-gray-400 hover:text-gray-200 transition-colors text-sm"
+              className="flex items-center gap-1 text-gray-400 hover:text-gray-200 transition-colors text-sm focus-ring rounded-lg"
             >
               <ArrowLeft className="w-4 h-4" />
               Back

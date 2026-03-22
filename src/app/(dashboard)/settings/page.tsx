@@ -185,7 +185,7 @@ export default function SettingsPage() {
   )
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-8 max-w-3xl animate-fade-in">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-1">Settings</h1>
         <p className="text-gray-400">Configure your AI provider and brand preferences</p>

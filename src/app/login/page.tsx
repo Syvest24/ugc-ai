@@ -102,7 +102,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md animate-scale-in">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
@@ -120,7 +120,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
+        <div className="glass-card rounded-2xl p-6">
           <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
             {mode === 'register' && (
               <div>
@@ -131,7 +131,7 @@ export default function LoginPage() {
                   onChange={e => setName(e.target.value)}
                   placeholder="Your name (optional)"
                   maxLength={100}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors focus-ring"
                 />
               </div>
             )}
@@ -144,7 +144,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 required
                 maxLength={200}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors focus-ring"
               />
             </div>
             <div>
@@ -157,7 +157,7 @@ export default function LoginPage() {
                 required
                 minLength={mode === 'register' ? 8 : 6}
                 maxLength={128}
-                className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors focus-ring"
               />
               {mode === 'register' && (
                 <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
@@ -166,7 +166,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 btn-press focus-ring"
             >
               {loading ? (
                 <>
@@ -188,7 +188,7 @@ export default function LoginPage() {
           <div className="mt-4 text-center">
             <button
               onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-              className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
+              className="text-sm text-violet-400 hover:text-violet-300 transition-colors focus-ring rounded-lg px-2 py-1"
             >
               {mode === 'login'
                 ? "Don't have an account? Create one"

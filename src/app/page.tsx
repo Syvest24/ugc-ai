@@ -20,7 +20,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4">
+      <header className="sticky top-0 z-50 glass-card border-b border-gray-800/50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
@@ -29,12 +29,12 @@ export default function LandingPage() {
             <span className="font-bold text-lg">UGCForge</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-gray-400 hover:text-gray-200 transition-colors">
+            <Link href="/login" className="text-sm text-gray-400 hover:text-gray-200 transition-colors focus-ring rounded-lg px-2 py-1">
               Sign in
             </Link>
             <Link
               href="/login"
-              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors btn-press focus-ring"
             >
               Get Started Free
             </Link>
@@ -45,31 +45,31 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="px-6 py-24 text-center">
         <div className="max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-violet-950/50 border border-violet-800/50 rounded-full px-4 py-1.5 text-sm text-violet-300 mb-8">
+          <div className="animate-fade-in-up inline-flex items-center gap-2 bg-violet-950/50 border border-violet-800/50 rounded-full px-4 py-1.5 text-sm text-violet-300 mb-8">
             <Sparkles className="w-3.5 h-3.5" />
             AI-Powered UGC for Ecommerce &amp; Creators
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+          <h1 className="animate-fade-in-up stagger-2 text-5xl md:text-6xl font-bold mb-6 leading-tight">
             Generate{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">
+            <span className="text-gradient">
               High-Converting
             </span>
             {' '}UGC Content in Seconds
           </h1>
-          <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
+          <p className="animate-fade-in-up stagger-3 text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
             Create viral hooks, scripts, captions, and ad copy for TikTok, Instagram, YouTube Shorts, and more. Built for creators, ecommerce brands, and affiliate marketers.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="animate-fade-in-up stagger-4 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/25"
+              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/25 btn-press focus-ring"
             >
               Start Generating Free
               <ArrowRight className="w-5 h-5" />
             </Link>
             <a
               href="#demo"
-              className="inline-flex items-center gap-2 border border-gray-700 hover:border-gray-600 text-gray-300 px-8 py-4 rounded-xl text-base font-semibold transition-all"
+              className="inline-flex items-center gap-2 border border-gray-700 hover:border-gray-600 text-gray-300 px-8 py-4 rounded-xl text-base font-semibold transition-all btn-press focus-ring"
             >
               See How It Works
             </a>
@@ -101,8 +101,8 @@ export default function LandingPage() {
               { step: '1', icon: Target, title: 'Describe your product', desc: 'Enter your product name, audience, and platform. Our AI handles the rest.' },
               { step: '2', icon: Sparkles, title: 'AI generates everything', desc: 'Get 10 hooks, a full script, captions, hashtags, CTAs, and A/B variants instantly.' },
               { step: '3', icon: Video, title: 'Create & export video', desc: 'Turn your script into a polished video with AI voices, stock footage, and captions.' },
-            ].map(s => (
-              <div key={s.step} className="text-center">
+            ].map((s, i) => (
+              <div key={s.step} className={`text-center animate-fade-in-up stagger-${i + 1}`}>
                 <div className="w-12 h-12 rounded-full bg-violet-600/20 border border-violet-600/30 flex items-center justify-center mx-auto mb-4 text-lg font-bold text-violet-400">
                   {s.step}
                 </div>
@@ -130,7 +130,7 @@ export default function LandingPage() {
               { icon: TrendingUp, label: 'Analytics', color: 'cyan' },
               { icon: Zap, label: 'Text to Video', color: 'rose' },
             ].map(cap => (
-              <div key={cap.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center hover:border-gray-700 transition-colors">
+              <div key={cap.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center card-interactive glow-hover">
                 <cap.icon className="w-6 h-6 mx-auto mb-2 text-gray-300" />
                 <span className="text-sm font-medium text-gray-200">{cap.label}</span>
               </div>
@@ -150,7 +150,7 @@ export default function LandingPage() {
             {features.map(f => {
               const Icon = f.icon
               return (
-                <div key={f.title} className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
+                <div key={f.title} className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 card-interactive glow-hover">
                   <div className="w-10 h-10 rounded-lg bg-violet-600/20 border border-violet-600/30 flex items-center justify-center mb-4">
                     <Icon className="w-5 h-5 text-violet-400" />
                   </div>
@@ -194,11 +194,11 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="px-6 py-24 text-center">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-4xl font-bold mb-4">Ready to forge your UGC?</h2>
+          <h2 className="text-4xl font-bold mb-4"><span className="text-gradient">Ready to forge your UGC?</span></h2>
           <p className="text-gray-400 mb-8">Join creators and brands using UGCForge to generate content that converts.</p>
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/25"
+            className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/25 btn-press focus-ring"
           >
             Get Started Free
             <ArrowRight className="w-5 h-5" />

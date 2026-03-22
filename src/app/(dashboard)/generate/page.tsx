@@ -32,8 +32,8 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-const selectClass = "w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
-const inputClass = "w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+const selectClass = "w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors focus-ring"
+const inputClass = "w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors focus-ring"
 const textareaClass = `${inputClass} resize-vertical min-h-[80px]`
 
 export default function GeneratePage() {
@@ -323,7 +323,7 @@ ${output.abVariants.join('\n\n')}
   )
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-5xl animate-fade-in">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-1">Generate UGC Content</h1>
         <p className="text-gray-400">Fill in your product details and let AI create high-converting content</p>
@@ -455,7 +455,7 @@ ${output.abVariants.join('\n\n')}
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/20"
+          className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/20 btn-press focus-ring"
         >
           {loading ? (
             <>

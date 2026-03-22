@@ -41,7 +41,7 @@ function StatCard({ icon, label, value, sub, color }: {
   color?: string
 }) {
   return (
-    <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+    <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 card-interactive glow-hover">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color || '#A855F7'}20` }}>
           {icon}
@@ -154,7 +154,7 @@ export default function AnalyticsPage() {
     : 'No renders yet'
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8 max-w-6xl animate-fade-in">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
           <BarChart3 className="w-8 h-8 text-violet-400" />

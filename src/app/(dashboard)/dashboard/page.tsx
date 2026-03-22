@@ -50,7 +50,7 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="p-8">
+    <div className="p-8 animate-fade-in">
       <OnboardingModal />
       {/* Welcome */}
       <div className="mb-8">
@@ -63,10 +63,10 @@ export default async function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map(stat => {
+        {statCards.map((stat, i) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
+            <div key={stat.label} className={`bg-gray-900/60 border border-gray-800 rounded-xl p-5 card-interactive glow-hover animate-fade-in-up stagger-${i + 1}`} role="status" aria-label={`${stat.label}: ${stat.value}`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={statIconColors[stat.color]}>
                   <Icon className={statIconTextColors[stat.color]} />
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
             <Link
               key={action.href}
               href={action.href}
-              className={`group p-6 rounded-xl border transition-all ${
+              className={`group p-6 rounded-xl border transition-all card-interactive ${
                 action.primary
                   ? 'bg-violet-600/10 border-violet-600/40 hover:bg-violet-600/20'
                   : 'bg-gray-900/60 border-gray-800 hover:border-gray-700'

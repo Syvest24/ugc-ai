@@ -71,7 +71,7 @@ export default function Navbar() {
     <>
       <div className="p-6 border-b border-gray-800 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-lg text-white">UGCForge</span>
@@ -144,7 +144,7 @@ export default function Navbar() {
           <Menu className="w-5 h-5" />
         </button>
         <Link href="/dashboard" className="flex items-center gap-2 ml-3">
-          <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="font-bold text-white">UGCForge</span>
@@ -165,7 +165,7 @@ export default function Navbar() {
         role="navigation"
         aria-label="Main navigation"
         className={cn(
-          'fixed top-0 h-full w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50 transition-transform duration-300 ease-in-out',
+          'fixed top-0 h-full w-64 bg-gray-950/95 backdrop-blur-xl border-r border-gray-800/60 flex flex-col z-50 transition-transform duration-300 ease-in-out',
           // Desktop: always visible
           'lg:translate-x-0',
           // Mobile: slide in/out

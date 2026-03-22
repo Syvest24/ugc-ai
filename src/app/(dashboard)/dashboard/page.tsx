@@ -24,16 +24,16 @@ export default async function DashboardPage() {
   }
 
   const statIconColors: Record<string, string> = {
-    violet: 'w-9 h-9 rounded-lg bg-violet-600/20 border border-violet-600/30 flex items-center justify-center',
-    pink: 'w-9 h-9 rounded-lg bg-pink-600/20 border border-pink-600/30 flex items-center justify-center',
-    blue: 'w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-600/30 flex items-center justify-center',
-    emerald: 'w-9 h-9 rounded-lg bg-emerald-600/20 border border-emerald-600/30 flex items-center justify-center',
+    violet: 'w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/25',
+    pink: 'w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center shadow-lg shadow-pink-500/25',
+    blue: 'w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25',
+    emerald: 'w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/25',
   }
   const statIconTextColors: Record<string, string> = {
-    violet: 'w-4 h-4 text-violet-400',
-    pink: 'w-4 h-4 text-pink-400',
-    blue: 'w-4 h-4 text-blue-400',
-    emerald: 'w-4 h-4 text-emerald-400',
+    violet: 'w-5 h-5 text-white',
+    pink: 'w-5 h-5 text-white',
+    blue: 'w-5 h-5 text-white',
+    emerald: 'w-5 h-5 text-white',
   }
   const statCards = [
     { label: 'Content Generated', value: stats.contentGenerated.toString(), icon: Zap, color: 'violet' },
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
       <OnboardingModal />
       {/* Welcome */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-1">Welcome back, {name} 👋</h1>
+        <h1 className="text-3xl font-bold text-white mb-1">Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">{name}</span> \uD83D\uDC4B</h1>
         <p className="text-gray-400">Ready to create content that converts?</p>
       </div>
 
@@ -66,13 +66,13 @@ export default async function DashboardPage() {
         {statCards.map((stat, i) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className={`bg-gray-900/60 border border-gray-800 rounded-xl p-5 card-interactive glow-hover animate-fade-in-up stagger-${i + 1}`} role="status" aria-label={`${stat.label}: ${stat.value}`}>
+            <div key={stat.label} className={`bg-gray-900/60 border border-gray-800 hover:border-gray-700 rounded-2xl p-5 card-interactive glow-hover animate-fade-in-up stagger-${i + 1}`} role="status" aria-label={`${stat.label}: ${stat.value}`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={statIconColors[stat.color]}>
                   <Icon className={statIconTextColors[stat.color]} />
                 </div>
               </div>
-              <div className="text-2xl font-bold text-white mb-0.5">{stat.value}</div>
+              <div className="text-3xl font-extrabold text-white mb-0.5">{stat.value}</div>
               <div className="text-sm text-gray-400">{stat.label}</div>
             </div>
           )
@@ -87,16 +87,16 @@ export default async function DashboardPage() {
             <Link
               key={action.href}
               href={action.href}
-              className={`group p-6 rounded-xl border transition-all card-interactive ${
+              className={`group p-6 rounded-2xl border transition-all card-interactive ${
                 action.primary
-                  ? 'bg-violet-600/10 border-violet-600/40 hover:bg-violet-600/20'
+                  ? 'bg-gradient-to-br from-violet-600/15 to-pink-600/5 border-violet-500/30 hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10'
                   : 'bg-gray-900/60 border-gray-800 hover:border-gray-700'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${
-                    action.primary ? 'bg-violet-600' : 'bg-gray-800'
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
+                    action.primary ? 'bg-gradient-to-br from-violet-500 to-pink-500 shadow-lg shadow-violet-500/20' : 'bg-gray-800'
                   }`}>
                     <Icon className={`w-5 h-5 ${action.primary ? 'text-white' : 'text-gray-400'}`} />
                   </div>

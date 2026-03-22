@@ -101,11 +101,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-md animate-scale-in">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Background glow effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/15 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-pink-600/10 rounded-full blur-[128px] pointer-events-none" />
+
+      <div className="relative w-full max-w-md animate-scale-in">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-xl text-white">UGCForge</span>
@@ -120,7 +124,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl p-6 shadow-2xl shadow-black/20">
           <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
             {mode === 'register' && (
               <div>
@@ -166,7 +170,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 btn-press focus-ring"
+              className="w-full bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 btn-press focus-ring shadow-lg shadow-violet-500/20"
             >
               {loading ? (
                 <>

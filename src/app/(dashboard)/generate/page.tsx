@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { Wand2, Save, Download, RefreshCw, Video, Zap, Loader2, GitBranch, Check } from 'lucide-react'
+import { Wand2, Save, Download, RefreshCw, Video, Zap, Loader2, GitBranch, Check, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -325,14 +325,14 @@ ${output.abVariants.join('\n\n')}
   return (
     <div className="p-8 max-w-5xl animate-fade-in">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-1">Generate UGC Content</h1>
+        <h1 className="text-3xl font-bold text-white mb-1">Generate <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">UGC Content</span></h1>
         <p className="text-gray-400">Fill in your product details and let AI create high-converting content</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Core Inputs */}
-        <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 space-y-4">
-          <h2 className="font-semibold text-white mb-4">Product Details</h2>
+        <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-4">
+          <h2 className="font-semibold text-white mb-4 flex items-center gap-2"><Sparkles className="w-4 h-4 text-violet-400" /> Product Details</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -455,7 +455,7 @@ ${output.abVariants.join('\n\n')}
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl text-base font-semibold transition-all shadow-lg shadow-violet-500/20 btn-press focus-ring"
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl text-base font-semibold transition-all shadow-xl shadow-violet-500/25 btn-press focus-ring"
         >
           {loading ? (
             <>

@@ -3,29 +3,77 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { Providers } from './providers'
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'UGCForge – AI-Powered UGC Content Generator',
     template: '%s | UGCForge',
   },
-  description: 'Generate high-converting UGC scripts, hooks, captions and more for TikTok, Instagram, YouTube Shorts and LinkedIn.',
-  keywords: ['UGC', 'content generator', 'AI copywriting', 'TikTok scripts', 'Instagram captions', 'social media marketing'],
+  description: 'Generate high-converting UGC scripts, hooks, captions, AI videos, and ad copy for TikTok, Instagram, YouTube Shorts, and LinkedIn. Free AI-powered content generator for creators and ecommerce brands.',
+  keywords: [
+    'UGC generator', 'AI UGC creator', 'TikTok script generator', 'Instagram caption generator',
+    'viral video scripts', 'UGC content generator', 'AI copywriting', 'social media marketing',
+    'short-form video generator', 'product video scripts', 'AI ad copy', 'YouTube Shorts generator',
+  ],
   authors: [{ name: 'UGCForge' }],
+  creator: 'UGCForge',
   openGraph: {
     type: 'website',
     siteName: 'UGCForge',
     title: 'UGCForge – AI-Powered UGC Content Generator',
-    description: 'Generate high-converting UGC scripts, hooks, captions and more for TikTok, Instagram, YouTube Shorts and LinkedIn.',
+    description: 'Generate high-converting UGC scripts, hooks, captions, videos and more for TikTok, Instagram, YouTube Shorts, and LinkedIn.',
+    url: siteUrl,
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'UGCForge – AI-Powered UGC Content Generator',
     description: 'Generate high-converting UGC scripts, hooks, captions and more.',
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-snippet': -1,
+      'max-image-preview': 'large',
+    },
+  },
   icons: {
     icon: '/favicon.ico',
   },
+  alternates: {
+    canonical: siteUrl,
+  },
+}
+
+// JSON-LD structured data for Organization + SoftwareApplication
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'UGCForge',
+      url: siteUrl,
+      description: 'AI-powered UGC content generator for creators and ecommerce brands.',
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'UGCForge',
+      url: siteUrl,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: 'Generate high-converting UGC scripts, hooks, captions, AI videos, and ad copy for social media platforms.',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+    },
+  ],
 }
 
 export default function RootLayout({
@@ -36,6 +84,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="antialiased bg-gray-950 text-gray-100">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Providers>
           <a
             href="#main-content"

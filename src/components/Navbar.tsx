@@ -72,7 +72,7 @@ export default function Navbar() {
       <div className="p-6 border-b border-gray-800 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <Zap className="w-4 h-4 text-white" />
+            <Zap className="w-4 h-4 text-white" aria-hidden="true" />
           </div>
           <span className="font-bold text-lg text-white">UGCForge</span>
         </Link>
@@ -110,7 +110,7 @@ export default function Navbar() {
                         : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                     )}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4" aria-hidden="true" />
                     {item.label}
                   </Link>
                 )
@@ -125,7 +125,7 @@ export default function Navbar() {
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all w-full focus-ring"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-4 h-4" aria-hidden="true" />
           Sign Out
         </button>
       </div>
@@ -145,7 +145,7 @@ export default function Navbar() {
         </button>
         <Link href="/dashboard" className="flex items-center gap-2 ml-3">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-            <Zap className="w-3.5 h-3.5 text-white" />
+            <Zap className="w-3.5 h-3.5 text-white" aria-hidden="true" />
           </div>
           <span className="font-bold text-white">UGCForge</span>
         </Link>

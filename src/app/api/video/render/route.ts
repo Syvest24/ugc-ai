@@ -15,12 +15,25 @@ const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_
 
 /**
  * Resolve a serve-path like /api/generated/video/foo.mp4 to an absolute FS path.
+ * Validates the resolved path stays within allowed directories to prevent path traversal.
  */
 function servePathToFs(servePath: string): string {
+  let basePath: string
+  let relativePart: string
+
   if (servePath.startsWith('/api/generated/')) {
-    return path.join('/tmp', 'generated', servePath.replace('/api/generated/', ''))
+    basePath = path.join('/tmp', 'generated')
+    relativePart = servePath.replace('/api/generated/', '')
+  } else {
+    basePath = path.join(process.cwd(), 'public')
+    relativePart = servePath.startsWith('/') ? servePath.slice(1) : servePath
   }
-  return path.join(process.cwd(), 'public', servePath)
+
+  const resolved = path.resolve(basePath, relativePart)
+  if (!resolved.startsWith(basePath + path.sep) && resolved !== basePath) {
+    throw new Error('Path traversal detected')
+  }
+  return resolved
 }
 
 /**
@@ -109,10 +122,25 @@ export async function POST(req: NextRequest) {
 
     // Save video record as rendering
     const user = await ensureUser(session.user.email, session.user.name)
+
+    // Verify ownership of contentId if provided
+    let validContentId: string | null = null
+    if (body.contentId) {
+      const content = await prisma.generatedContent.findFirst({
+        where: { id: body.contentId, userId: user.id },
+        select: { id: true },
+      })
+      if (!content) {
+        done(400)
+        return badRequest('Invalid contentId')
+      }
+      validContentId = content.id
+    }
+
     videoRecord = await prisma.video.create({
       data: {
         userId: user.id,
-        contentId: body.contentId || null,
+        contentId: validContentId,
         template: body.template,
         platform: body.platform,
         hook: body.hook,

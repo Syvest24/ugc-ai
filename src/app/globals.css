@@ -163,3 +163,44 @@ body {
 .btn-press:active {
   transform: scale(0.97);
 }
+
+/* Visually hidden — accessible to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respect reduced motion preference (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-scale-in,
+  .animate-slide-in-left {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .card-interactive:hover {
+    transform: none;
+  }
+
+  .btn-press:active {
+    transform: none;
+  }
+
+  .text-gradient {
+    animation: none;
+  }
+
+  .glow-hover:hover {
+    box-shadow: none;
+  }
+}

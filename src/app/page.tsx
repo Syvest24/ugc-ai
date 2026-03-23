@@ -3,8 +3,11 @@ import { Zap, ArrowRight, Check, TrendingUp, Sparkles, Target, Video, ImageIcon 
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'UGCForge – AI-Powered UGC Content Generator',
-  description: 'Generate high-converting UGC scripts, hooks, captions and more for TikTok, Instagram, YouTube Shorts and LinkedIn.',
+  title: 'UGCForge – AI-Powered UGC Content Generator | Free Scripts, Videos & Captions',
+  description: 'Generate high-converting UGC scripts, viral hooks, AI videos, captions and ad copy for TikTok, Instagram, YouTube Shorts and LinkedIn. Free for creators and ecommerce brands.',
+  alternates: {
+    canonical: '/',
+  },
 }
 
 const features = [
@@ -16,15 +19,50 @@ const features = [
 
 const platforms = ['TikTok', 'Instagram', 'YouTube Shorts', 'Twitter/X', 'LinkedIn']
 
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'How does UGCForge work?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Simply enter your product name, target audience, and platform. UGCForge AI generates 10 hook variations, a complete video script, captions, hashtags, CTAs, and A/B test variants instantly.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What platforms does UGCForge support?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'UGCForge generates content optimized for TikTok, Instagram Reels, YouTube Shorts, Twitter/X, and LinkedIn.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is UGCForge free to use?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Yes, you can get started with UGCForge for free. Generate UGC scripts, AI videos, images, and captions without any upfront cost.',
+      },
+    },
+  ],
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-card border-b border-gray-800/50 px-6 py-4">
+      <header className="sticky top-0 z-50 glass-card border-b border-gray-800/50 px-6 py-4" role="banner">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Zap className="w-4 h-4 text-white" />
+              <Zap className="w-4 h-4 text-white" aria-hidden="true" />
             </div>
             <span className="font-bold text-lg">UGCForge</span>
           </div>
@@ -51,7 +89,7 @@ export default function LandingPage() {
 
         <div className="relative max-w-4xl mx-auto">
           <div className="animate-fade-in-up inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-1.5 text-sm text-violet-300 mb-8 backdrop-blur-sm">
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             AI-Powered UGC for Ecommerce &amp; Creators
           </div>
           <h1 className="animate-fade-in-up stagger-2 text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight">
@@ -71,7 +109,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all shadow-xl shadow-violet-500/30 btn-press focus-ring"
             >
               Start Generating Free
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5" aria-hidden="true" />
             </Link>
             <a
               href="#demo"
@@ -138,7 +176,7 @@ export default function LandingPage() {
               { icon: Zap, label: 'Text to Video', gradient: 'from-orange-500/20 to-orange-600/5', border: 'border-orange-500/30', iconColor: 'text-orange-400' },
             ].map(cap => (
               <div key={cap.label} className={`bg-gradient-to-br ${cap.gradient} border ${cap.border} rounded-2xl p-5 text-center card-interactive`}>
-                <cap.icon className={`w-7 h-7 mx-auto mb-3 ${cap.iconColor}`} />
+                <cap.icon className={`w-7 h-7 mx-auto mb-3 ${cap.iconColor}`} aria-hidden="true" />
                 <span className="text-sm font-semibold text-gray-100">{cap.label}</span>
               </div>
             ))}
@@ -160,7 +198,7 @@ export default function LandingPage() {
               return (
                 <div key={f.title} className="group bg-gray-900/80 border border-gray-800 hover:border-violet-500/40 rounded-2xl p-6 transition-all duration-300 hover:bg-gray-900/90 hover:shadow-lg hover:shadow-violet-500/5">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-pink-500/10 border border-violet-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Icon className="w-5 h-5 text-violet-400" />
+                    <Icon className="w-5 h-5 text-violet-400" aria-hidden="true" />
                   </div>
                   <h3 className="font-semibold text-lg text-gray-100 mb-2">{f.title}</h3>
                   <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
@@ -192,7 +230,7 @@ export default function LandingPage() {
               'A/B Test Variants',
             ].map(item => (
               <div key={item} className="flex items-center gap-3 bg-gray-900/40 border border-gray-800/50 rounded-xl px-4 py-3">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0" aria-hidden="true">
                   <Check className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-200">{item}</span>
@@ -216,16 +254,16 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 text-white px-10 py-4 rounded-xl text-lg font-semibold transition-all shadow-xl shadow-violet-500/30 btn-press focus-ring"
           >
             Get Started Free
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-5 h-5" aria-hidden="true" />
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 px-6 py-8">
+      <footer className="border-t border-gray-800 px-6 py-8" role="contentinfo">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-violet-600 flex items-center justify-center">
+            <div className="w-6 h-6 rounded bg-violet-600 flex items-center justify-center" aria-hidden="true">
               <Zap className="w-3 h-3 text-white" />
             </div>
             <span>UGCForge</span>

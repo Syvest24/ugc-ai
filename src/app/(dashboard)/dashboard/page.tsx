@@ -69,7 +69,7 @@ export default async function DashboardPage() {
             <div key={stat.label} className={`bg-gray-900/60 border border-gray-800 hover:border-gray-700 rounded-2xl p-5 card-interactive glow-hover animate-fade-in-up stagger-${i + 1}`} role="status" aria-label={`${stat.label}: ${stat.value}`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={statIconColors[stat.color]}>
-                  <Icon className={statIconTextColors[stat.color]} />
+                  <Icon className={statIconTextColors[stat.color]} aria-hidden="true" />
                 </div>
               </div>
               <div className="text-3xl font-extrabold text-white mb-0.5">{stat.value}</div>
@@ -98,14 +98,14 @@ export default async function DashboardPage() {
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${
                     action.primary ? 'bg-gradient-to-br from-violet-500 to-pink-500 shadow-lg shadow-violet-500/20' : 'bg-gray-800'
                   }`}>
-                    <Icon className={`w-5 h-5 ${action.primary ? 'text-white' : 'text-gray-400'}`} />
+                    <Icon className={`w-5 h-5 ${action.primary ? 'text-white' : 'text-gray-400'}`} aria-hidden="true" />
                   </div>
                   <h3 className="font-semibold text-white mb-1">{action.label}</h3>
                   <p className="text-sm text-gray-400">{action.desc}</p>
                 </div>
                 <ArrowRight className={`w-5 h-5 mt-1 transition-transform group-hover:translate-x-1 ${
                   action.primary ? 'text-violet-400' : 'text-gray-600'
-                }`} />
+                }`} aria-hidden="true" />
               </div>
             </Link>
           )
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
       {/* Platforms */}
       <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-4 h-4 text-violet-400" />
+          <Sparkles className="w-4 h-4 text-violet-400" aria-hidden="true" />
           <h2 className="font-semibold text-white">Supported Platforms</h2>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -33,7 +33,8 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      // Next.js requires unsafe-inline for styles; unsafe-eval only in dev
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://images.pexels.com https://*.pexels.com https://image.pollinations.ai https://replicate.delivery https://*.replicate.delivery https://picsum.photos https://fastly.picsum.photos https://*.r2.dev https://*.cloudflarestorage.com",
       "media-src 'self' blob: data: https://videos.pexels.com https://*.pexels.com https://player.vimeo.com",

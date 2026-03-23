@@ -110,7 +110,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Zap className="w-5 h-5 text-white" />
+              <Zap className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <span className="font-bold text-xl text-white">UGCForge</span>
           </Link>
@@ -128,8 +128,9 @@ export default function LoginPage() {
           <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
             {mode === 'register' && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                 <input
+                  id="name"
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
@@ -140,8 +141,9 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email</label>
               <input
+                id="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -152,8 +154,9 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">Password</label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -161,10 +164,11 @@ export default function LoginPage() {
                 required
                 minLength={mode === 'register' ? 8 : 6}
                 maxLength={128}
+                aria-describedby={mode === 'register' ? 'password-hint' : undefined}
                 className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors focus-ring"
               />
               {mode === 'register' && (
-                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+                <p id="password-hint" className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
               )}
             </div>
             <button
@@ -174,7 +178,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
@@ -182,7 +186,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  {mode === 'login' ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                  {mode === 'login' ? <LogIn className="w-4 h-4" aria-hidden="true" /> : <UserPlus className="w-4 h-4" aria-hidden="true" />}
                   {mode === 'login' ? 'Sign In' : 'Create Account'}
                 </>
               )}
@@ -218,7 +222,7 @@ export default function LoginPage() {
               className="mt-3 w-full flex items-center justify-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {googleLoading ? (
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>

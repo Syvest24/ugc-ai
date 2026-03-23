@@ -15,11 +15,11 @@ const generateSchema = z.object({
   contentGoal: z.enum(['sales', 'engagement', 'follower_growth', 'authority_building']),
   tone: z.enum(['casual', 'bold', 'emotional', 'educational', 'storytelling']),
   ctaType: z.string().min(1).max(100),
-  competitorLinks: z.string().optional(),
-  customerReviews: z.string().optional(),
-  websiteUrl: z.string().optional(),
-  pricePoint: z.string().optional(),
-  objections: z.string().optional(),
+  competitorLinks: z.string().max(500).optional(),
+  customerReviews: z.string().max(2000).optional(),
+  websiteUrl: z.string().max(200).optional(),
+  pricePoint: z.string().max(50).optional(),
+  objections: z.string().max(500).optional(),
   llmProvider: z.enum(['openrouter', 'huggingface', 'together', 'groq', 'mistral']).optional(),
 })
 
